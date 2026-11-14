@@ -111,6 +111,15 @@
   td.num { font-weight: 600; }
   td button { padding: 2px 8px; font-size: 13px; }
   td.actions { text-align: right; width: 1%; }
+  td.actions button + button { margin-left: 6px; }
+  td.note { cursor: pointer; }
+  td.note:hover { text-decoration: underline dotted; text-underline-offset: 3px; }
+  #note-dlg textarea { width: 100%; min-height: 84px; resize: vertical; font: inherit; color: var(--text-primary);
+                       background: var(--page); border: 1px solid var(--grid); border-radius: 7px; padding: 8px; }
+  #note-dlg textarea:focus-visible { outline: 2px solid var(--series-1); outline-offset: 1px; }
+  .dlg-foot button { white-space: nowrap; }
+  .note-meta { font-size: 14px; margin: 12px 0 10px; }
+  .note-count { font-size: 12px; color: var(--text-secondary); text-align: right; margin-top: 4px; }
   .muted { color: var(--text-secondary); }
   .scroll { overflow-x: auto; }
   footer { max-width: 960px; margin: 0 auto; padding: 8px 16px 32px; font-size: 13px; color: var(--text-secondary);
@@ -245,6 +254,29 @@
   <span id="version">SweetSpot</span><span aria-hidden="true">·</span>
   <a href="https://github.com/moordrak/SweetSpot" target="_blank" rel="noopener">GitHub</a>
 </footer>
+
+<dialog id="note-dlg" aria-labelledby="note-title">
+  <form id="note-form" method="dialog">
+    <div class="dlg-head">
+      <h2 id="note-title">Napomena</h2>
+      <button type="button" class="icon-button" data-close aria-label="Zatvori">✕</button>
+    </div>
+    <div class="dlg-body">
+      <p class="note-meta" id="note-meta"></p>
+      <label for="note-text" class="muted" style="display:block;margin-bottom:4px">Napomena uz očitanje</label>
+      <textarea id="note-text" maxlength="200" placeholder="npr. nakon večere, prije treninga…"></textarea>
+      <div class="note-count" id="note-count"></div>
+      <p class="error" id="note-error" role="alert"></p>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" id="note-clear" title="Ukloni napomenu">Ukloni</button>
+      <span style="display:flex;gap:8px">
+        <button type="button" data-close>Odustani</button>
+        <button type="submit" class="primary" id="note-save">Spremi</button>
+      </span>
+    </div>
+  </form>
+</dialog>
 
 <dialog id="settings" aria-labelledby="settings-title">
   <form id="settings-form" method="dialog">
@@ -482,8 +514,8 @@ function render() {
   $("rows").innerHTML = rows.map(r => `<tr>
       <td>${fmtDate(r.date)}${r.note ? `<div class="note-inline">${esc(r.note)}</div>` : ""}</td>
       <td>${fmtTime(r.date)}</td><td class="num">${fmt(r.mmol)}</td>
-      <td class="col-source">${esc(r.source)}</td><td class="note col-note">${esc(r.note)}</td>
-      <td class="actions"><button data-id="${r.id}" aria-label="Obriši očitanje" title="Obriši"><span class="long">Obriši</span><span class="short" aria-hidden="true">✕</span></button></td></tr>`).join("")
+      <td class="col-source">${esc(r.source)}</td><td class="note col-note" data-edit="${r.id}" title="Uredi napomenu">${esc(r.note)}</td>
+      <td class="actions"><button data-edit="${r.id}" aria-label="Uredi napomenu" title="Uredi napomenu"><span class="long">Napomena</span><span class="short" aria-hidden="true">✎</span></button><button data-id="${r.id}" aria-label="Obriši očitanje" title="Obriši"><span class="long">Obriši</span><span class="short" aria-hidden="true">✕</span></button></td></tr>`).join("")
     || `<tr><td colspan="6" class="muted">Nema očitanja u ovom razdoblju.</td></tr>`;
   $("range-label").textContent = `· osjenčano: ciljni raspon ${fmt(LOW)}–${fmt(HIGH)}`;
   chartRows = rows.slice().reverse();
@@ -583,6 +615,8 @@ document.querySelector(".ranges").addEventListener("click", e => {
 });
 
 $("rows").addEventListener("click", async e => {
+  const edit = e.target.closest("[data-edit]");
+  if (edit) { openNote(Number(edit.dataset.edit)); return; }
   const button = e.target.closest("button[data-id]");
   if (!button || !confirm("Obrisati ovo očitanje?")) return;
   await fetch("/api/readings/" + button.dataset.id, {method: "DELETE"});
@@ -604,6 +638,53 @@ $("form").addEventListener("submit", async e => {
   if (res.ok) { $("message").textContent = "Očitanje je spremljeno."; f.mmol.value = ""; f.note.value = ""; resetTime(); load(); }
   else $("message").textContent = (await res.json()).error || "Spremanje nije uspjelo.";
 });
+
+/* ---------- uređivanje napomene ---------- */
+const noteDlg = $("note-dlg");
+let noteId = null;
+
+function openNote(id) {
+  const r = all.find(x => x.id === id);
+  if (!r) return;
+  noteId = id;
+  $("note-meta").innerHTML = `<strong>${fmt(r.mmol)} mmol/L</strong> · ${fmtDate(r.date)} ${fmtTime(r.date)} · <span class="muted">${esc(r.source)}</span>`;
+  $("note-text").value = r.note || "";
+  $("note-error").textContent = "";
+  countNote();
+  noteDlg.showModal();
+  $("note-text").focus();
+  $("note-text").setSelectionRange(9999, 9999);
+}
+function countNote() {
+  const n = $("note-text").value.length;
+  $("note-count").textContent = `${n} / 200`;
+  $("note-clear").disabled = n === 0;
+}
+async function saveNote(text) {
+  $("note-save").disabled = true;
+  try {
+    const res = await fetch("/api/readings/" + noteId, {method: "PATCH", headers: {"Content-Type": "application/json"},
+                                                        body: JSON.stringify({note: text})});
+    const body = await res.json();
+    if (!res.ok) { $("note-error").textContent = body.error || "Spremanje nije uspjelo."; return; }
+    const r = all.find(x => x.id === noteId);
+    if (r) r.note = body.note;
+    noteDlg.close();
+    render();
+  } catch (err) {
+    $("note-error").textContent = "Poslužitelj nije dostupan.";
+  } finally {
+    $("note-save").disabled = false;
+  }
+}
+$("note-text").addEventListener("input", countNote);
+$("note-text").addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("note-form").requestSubmit(); }
+});
+$("note-form").addEventListener("submit", e => { e.preventDefault(); saveNote($("note-text").value.trim()); });
+$("note-clear").addEventListener("click", () => saveNote(""));
+noteDlg.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => noteDlg.close()));
+noteDlg.addEventListener("click", e => { if (e.target === noteDlg) noteDlg.close(); });
 
 /* ---------- prozor s postavkama ---------- */
 const dlg = $("settings"), sform = $("settings-form");

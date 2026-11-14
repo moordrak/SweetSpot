@@ -16,6 +16,7 @@ Docker slika: `ghcr.io/moordrak/sweetspot` (amd64 i arm64).
 ### Web sučelje
 
 Grafikon s ciljnim rasponom, prosjeci za odabrano razdoblje, ručni unos i popis očitanja.
+Napomena uz svako očitanje može se dodati ili promijeniti (gumb **Napomena** ili klik na napomenu).
 Verzija programa vidi se u podnožju stranice i u postavkama.
 
 ![Web sučelje SweetSpot, svijetla tema s valovima u pozadini](docs/screenshots/web-svijetla.png)
@@ -183,6 +184,7 @@ Poslužitelj odbacuje duplikate. Ako poslužitelj nije dostupan, očitanja se č
 |---|---|---|
 | GET | `/api/readings` | sva očitanja |
 | POST | `/api/readings` | `{"readings":[{"time":"2026-11-14T08:30:00","mmol":5.6,"source":"aparat"}]}` |
+| PATCH | `/api/readings/<id>` | `{"note":"nakon večere"}` – izmjena napomene |
 | DELETE | `/api/readings/<id>` | brisanje |
 | GET | `/api/export.csv` | izvoz |
 | GET | `/api/settings` | postavke (`low`, `high`) i verzija programa |

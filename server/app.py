@@ -193,6 +193,38 @@ class Handler(BaseHTTPRequestHandler):
             db.close()
         self.send(200, {**saved, "version": APP_VERSION})
 
+    def do_PATCH(self):
+        """Mijenja napomenu jednog očitanja: PATCH /api/readings/<id> {"note": "..."}."""
+        if not self.authorized():
+            return
+        prefix, _, rid = urlparse(self.path).path.rpartition("/")
+        if prefix != "/api/readings" or not rid.isdigit():
+            return self.send(404, {"error": "Nije pronađeno."})
+        try:
+            payload = self.read_json()
+            note = payload["note"]
+            if note is None:
+                note = ""
+            if not isinstance(note, str):
+                raise ValueError("napomena mora biti tekst")
+            note = " ".join(note.split())          # bez novih redaka i viška razmaka
+            if len(note) > 200:
+                raise ValueError("napomena smije imati najviše 200 znakova")
+        except (KeyError, TypeError, ValueError) as exc:
+            return self.send(400, {"error": f"Neispravna napomena: {exc}"})
+        db = open_db()
+        try:
+            changed = db.execute("UPDATE ocitanja SET napomena = ? WHERE id = ?", (note, int(rid))).rowcount
+            db.commit()
+            row = db.execute("SELECT id, vrijeme, mmol, izvor, napomena FROM ocitanja WHERE id = ?",
+                             (int(rid),)).fetchone()
+        finally:
+            db.close()
+        if not changed:
+            return self.send(404, {"error": "Očitanje ne postoji."})
+        self.send(200, {"id": row[0], "time": row[1].replace(" ", "T"), "mmol": row[2],
+                        "source": row[3], "note": row[4]})
+
     def do_DELETE(self):
         if not self.authorized():
             return
