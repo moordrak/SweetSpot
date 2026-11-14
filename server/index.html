@@ -69,7 +69,7 @@
   h2 { font-size: 15px; margin: 0 0 10px; }
   .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .ranges { display: flex; gap: 6px; }
-  .card, .tile, #tip, dialog {
+  .card, .tile, #tip {
     background: color-mix(in srgb, var(--surface-solid) var(--glass), transparent);
     -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
   }
@@ -118,7 +118,7 @@
   footer a { color: inherit; }
 
   /* ---------- postavke ---------- */
-  dialog { color: var(--text-primary); border: 1px solid var(--grid); border-radius: 12px; padding: 0;
+  dialog { background: var(--surface-solid); color: var(--text-primary); border: 1px solid var(--grid); border-radius: 12px; padding: 0;
            width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 24px); box-shadow: 0 12px 40px rgba(0,0,0,.3); }
   dialog::backdrop { background: rgba(0, 0, 0, .35); }
   dialog form { display: block; }
@@ -146,6 +146,9 @@
                    background: var(--sw-line); }
   .toggle { display: flex; flex-direction: row; align-items: center; gap: 8px; font-size: 14px; color: var(--text-primary); }
   .toggle input { width: 18px; height: 18px; }
+  .slider-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .slider-row input[type=range] { flex: 1 1 200px; accent-color: var(--series-1); padding: 0; border: 0; background: none; }
+  .slider-row output { min-width: 3.5em; font-variant-numeric: tabular-nums; font-weight: 600; }
   .error { color: #c0392b; font-size: 13px; min-height: 1.2em; margin: 6px 0 0; }
   [data-theme="dark"] .error, [data-theme="midnight"] .error, [data-theme="matrix"] .error { color: #ff8a80; }
 
@@ -272,7 +275,17 @@
         <p class="hint" style="margin-top:8px">Animacija miruje ako je u sustavu uključeno smanjeno kretanje.</p>
         <label class="toggle"><input type="checkbox" id="art-toggle"> Stilizirana slika u pozadini</label>
       </fieldset>
-      <p class="hint">Tema i pozadina pamte se na ovom uređaju.</p>
+
+      <fieldset>
+        <legend>Prozirnost kartica</legend>
+        <p class="hint">Koliko se pozadina vidi kroz kartice. Veća prozirnost ističe animaciju, manja olakšava čitanje.</p>
+        <div class="slider-row">
+          <input type="range" id="glass-slider" min="0" max="70" step="1" aria-describedby="glass-value">
+          <output id="glass-value" for="glass-slider"></output>
+          <button type="button" id="glass-default">Prema temi</button>
+        </div>
+      </fieldset>
+      <p class="hint">Tema, pozadina i prozirnost pamte se na ovom uređaju.</p>
     </div>
     <div class="dlg-foot">
       <span class="muted" id="settings-version"></span>
@@ -319,6 +332,7 @@ const look = {
   theme: store.get("ss-theme", "system"),
   bg: store.get("ss-bg", "auto"),
   art: store.get("ss-art", "on"),
+  glass: store.get("ss-glass", ""),     // prozirnost kartica u postocima; prazno = prema temi
 };
 const darkQuery = matchMedia("(prefers-color-scheme: dark)");
 const motionQuery = matchMedia("(prefers-reduced-motion: reduce)");
@@ -329,6 +343,8 @@ function applyLook() {
   const root = document.documentElement;
   root.dataset.theme = resolvedTheme();
   root.dataset.art = look.art;
+  if (look.glass === "") root.style.removeProperty("--glass");
+  else root.style.setProperty("--glass", `${100 - Number(look.glass)}%`);
   background.start(resolvedBg());
   if (chartRows) drawChart();
 }
@@ -609,8 +625,32 @@ function openSettings() {
   choiceList($("theme-choices"), "theme", THEMES, look.theme, true);
   choiceList($("bg-choices"), "bg", BACKGROUNDS, look.bg, false);
   $("art-toggle").checked = look.art === "on";
+  showGlass();
   dlg.showModal();
 }
+
+// Prozirnost: zadana vrijednost teme čita se iz CSS-a (--glass je udio neprozirne boje).
+function themeGlass() {
+  const root = document.documentElement, inline = root.style.getPropertyValue("--glass");
+  root.style.removeProperty("--glass");
+  const opaque = parseFloat(getComputedStyle(root).getPropertyValue("--glass")) || 88;
+  if (inline) root.style.setProperty("--glass", inline);
+  return Math.round(100 - opaque);
+}
+function showGlass() {
+  const value = look.glass === "" ? themeGlass() : Number(look.glass);
+  $("glass-slider").value = value;
+  $("glass-value").textContent = `${value} %`;
+  $("glass-default").disabled = look.glass === "";
+}
+$("glass-slider").addEventListener("input", e => {
+  look.glass = e.target.value;
+  applyLook(); showGlass();
+});
+$("glass-default").addEventListener("click", () => {
+  look.glass = "";
+  applyLook(); showGlass();
+});
 
 function closeSettings(keep) {
   if (!keep && lookBefore) { Object.assign(look, lookBefore); applyLook(); }
@@ -620,7 +660,7 @@ function closeSettings(keep) {
 
 // Promjena izgleda odmah se vidi; trajno se pamti tek kad se klikne Spremi.
 sform.addEventListener("change", e => {
-  if (e.target.name === "theme") look.theme = e.target.value;
+  if (e.target.name === "theme") { look.theme = e.target.value; applyLook(); showGlass(); return; }
   else if (e.target.name === "bg") look.bg = e.target.value;
   else if (e.target.id === "art-toggle") look.art = e.target.checked ? "on" : "off";
   else return;
@@ -661,6 +701,7 @@ sform.addEventListener("submit", async e => {
     }
   }
   store.set("ss-theme", look.theme); store.set("ss-bg", look.bg); store.set("ss-art", look.art);
+  store.set("ss-glass", look.glass);
   closeSettings(true);
 });
 

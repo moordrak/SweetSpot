@@ -31,8 +31,9 @@ Verzija programa vidi se u podnožju stranice i u postavkama.
 - **ciljni raspon** – donja i gornja granica u mmol/L; sprema se na poslužitelj i vrijedi na svim uređajima
 - **tema** i **animirana pozadina** (valovi, mjehurići, kiša znakova ili bez animacije)
 - **stilizirana slika u pozadini** – kap, molekula glukoze i krivulja s ciljnim pojasom
+- **prozirnost kartica** – klizač od 0 do 70 %, koliko se pozadina vidi kroz kartice
 
-Tema i pozadina pamte se na svakom uređaju posebno. Ako je u sustavu uključeno smanjeno kretanje,
+Tema, pozadina i prozirnost pamte se na svakom uređaju posebno. Ako je u sustavu uključeno smanjeno kretanje,
 pozadina se ne miče.
 
 ![Postavke web sučelja](docs/screenshots/web-postavke.png)
