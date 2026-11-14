@@ -7,7 +7,8 @@
 # Na postojećem Docker hostu (VM ili LXC, kao root):   bash sweetspot_install.sh --local
 #   -> postavlja SweetSpot u /opt/sweetspot (Docker instalira samo ako ga nema).
 #
-# Na Proxmoxu skripta pita za root lozinku kontejnera (ili je zadajte s ROOT_PASSWORD=...).
+# Na Proxmoxu skripta pita gdje pohraniti disk kontejnera i za root lozinku
+# (bez pitanja: STORAGE=... ROOT_PASSWORD=...).
 #
 # Postavke se mogu promijeniti varijablama okoline, npr.:
 #   CTID=150 STORAGE=local-zfs IP=192.168.1.60/24 GW=192.168.1.1 PORT=8085 bash sweetspot_install.sh
@@ -27,7 +28,7 @@ INSTALL_DIR="${INSTALL_DIR:-/opt/sweetspot}"
 # Postavke LXC kontejnera (samo na Proxmox hostu)
 CTID="${CTID:-}"                             # prazno = sljedeći slobodni ID
 CT_HOSTNAME="${CT_HOSTNAME:-sweetspot}"
-STORAGE="${STORAGE:-}"                       # prazno = local-lvm ili prvo dostupno spremište
+STORAGE="${STORAGE:-}"                       # prazno = skripta pita pri instalaciji
 TEMPLATE_STORAGE="${TEMPLATE_STORAGE:-local}"
 BRIDGE="${BRIDGE:-vmbr0}"
 IP="${IP:-dhcp}"                             # ili npr. 192.168.1.60/24
@@ -146,13 +147,75 @@ EOF
 # ---------------------------------------------------------------------------
 # Stvaranje LXC kontejnera na Proxmox hostu
 # ---------------------------------------------------------------------------
+# Pitanja se čitaju izravno s terminala (fd 3), pa rade i kad je skripta pokrenuta kroz cijev.
+open_tty() {
+  { exec 3<>/dev/tty; } 2>/dev/null
+}
+
+choose_storage() {
+  if [ -n "$STORAGE" ]; then
+    info "Spremište zadano varijablom STORAGE: $STORAGE"
+    return 0
+  fi
+  # naziv, vrsta, slobodno (GB) za svako aktivno spremište koje prima kontejnere
+  local list
+  list="$(pvesm status -content rootdir \
+    | awk 'NR>1 && $3=="active" {printf "%s %s %.1f\n", $1, $2, $6/1048576}')"
+  [ -n "$list" ] || fail "Nema aktivnog spremišta za kontejnere. Zadajte ga: STORAGE=... bash sweetspot_install.sh"
+
+  local -a names
+  mapfile -t names < <(awk '{print $1}' <<<"$list")
+  local default="${names[0]}" n
+  for n in "${names[@]}"; do
+    [ "$n" != "local-lvm" ] || default="local-lvm"
+  done
+
+  if [ "${#names[@]}" -eq 1 ]; then
+    STORAGE="$default"
+    info "Jedino dostupno spremište: $STORAGE"
+    return 0
+  fi
+  if ! open_tty; then
+    STORAGE="$default"
+    info "Nema terminala pa ne mogu pitati za spremište; koristim $STORAGE."
+    return 0
+  fi
+
+  local i=0 name type free answer
+  printf 'Gdje će biti pohranjen disk kontejnera?\n' >&3
+  while read -r name type free; do
+    i=$((i + 1))
+    printf '  %d) %-16s %-10s slobodno %s GB%s\n' "$i" "$name" "$type" "$free" \
+      "$([ "$name" = "$default" ] && echo '   [zadano]')" >&3
+  done <<<"$list"
+  while true; do
+    printf 'Odaberite broj ili naziv (Enter = %s): ' "$default" >&3
+    IFS= read -r -u 3 answer || answer=""
+    answer="${answer//[[:space:]]/}"
+    if [ -z "$answer" ]; then
+      STORAGE="$default"
+      break
+    fi
+    if [[ "$answer" =~ ^[0-9]+$ ]] && [ "$answer" -ge 1 ] && [ "$answer" -le "${#names[@]}" ]; then
+      STORAGE="${names[$((answer - 1))]}"
+      break
+    fi
+    for n in "${names[@]}"; do
+      [ "$n" != "$answer" ] || STORAGE="$n"
+    done
+    [ -z "$STORAGE" ] || break
+    printf 'Nepoznat odabir: %s\n' "$answer" >&3
+  done
+  exec 3>&-
+  info "Odabrano spremište: $STORAGE"
+}
+
 ask_root_password() {
   if [ -n "$ROOT_PASSWORD" ]; then
     info "Root lozinka je zadana varijablom ROOT_PASSWORD."
     return 0
   fi
-  # Čita se izravno s terminala, pa radi i kad je skripta pokrenuta kroz cijev.
-  if ! { exec 3<>/dev/tty; } 2>/dev/null; then
+  if ! open_tty; then
     info "Nema terminala pa ne mogu pitati za root lozinku; kontejner ostaje bez nje."
     info "Zadajte je s ROOT_PASSWORD=... ili naknadno: pct exec CTID -- passwd"
     return 0
@@ -188,17 +251,7 @@ install_proxmox() {
     fail "Kontejner $CTID već postoji. Odaberite drugi ID: CTID=... bash sweetspot_install.sh"
   fi
 
-  if [ -z "$STORAGE" ]; then
-    local storages
-    storages="$(pvesm status -content rootdir | awk 'NR>1 && $3=="active" {print $1}')"
-    if grep -qx 'local-lvm' <<<"$storages"; then
-      STORAGE=local-lvm
-    else
-      STORAGE="$(head -n1 <<<"$storages")"
-    fi
-    [ -n "$STORAGE" ] || fail "Nema spremišta za kontejnere. Zadajte ga: STORAGE=... bash sweetspot_install.sh"
-  fi
-
+  choose_storage
   ask_root_password
 
   info "Tražim Debian predložak..."
