@@ -9,6 +9,31 @@ automatski stižu u web aplikaciju koja radi u Dockeru.
 
 Docker slika: `ghcr.io/moordrak/sweetspot` (amd64 i arm64).
 
+## Snimke zaslona
+
+### Web sučelje
+
+Grafikon s pojasom ciljnog raspona, prosjeci za odabrano razdoblje, ručni unos i popis očitanja.
+Tema se prilagođava postavci sustava (svijetla ili tamna).
+
+![Web sučelje SweetSpot, svijetla tema](docs/screenshots/web-svijetla.png)
+
+![Web sučelje SweetSpot, tamna tema](docs/screenshots/web-tamna.png)
+
+### Agent za Windows
+
+| Postavke | Čarobnjak: priprema |
+|---|---|
+| ![Postavke agenta](docs/screenshots/windows-postavke.png) | ![Čarobnjak, korak 1: priprema](docs/screenshots/windows-carobnjak-1-priprema.png) |
+| **Čarobnjak: traženje aparata** | **Čarobnjak: gotovo** |
+| ![Čarobnjak, korak 2: traženje aparata](docs/screenshots/windows-carobnjak-2-trazenje.png) | ![Čarobnjak, korak 4: gotovo](docs/screenshots/windows-carobnjak-4-gotovo.png) |
+
+Ako spajanje ne uspije, čarobnjak prikaže razlog i što provjeriti:
+
+![Čarobnjak, neuspjelo spajanje](docs/screenshots/windows-carobnjak-3-greska.png)
+
+Snimke su napravljene s probnim podacima.
+
 ## 1. Instalacija web aplikacije
 
 ### Proxmox
