@@ -31,6 +31,7 @@ Verzija programa vidi se u podnožju stranice i u postavkama.
 **Postavke** (ikona zupčanika gore desno):
 
 - **ciljni raspon** – donja i gornja granica u mmol/L; sprema se na poslužitelj i vrijedi na svim uređajima
+- **token za agente** – prikaz i kopiranje tokena koji se upisuje u Windows i Android agenta
 - **tema** i **animirana pozadina** (valovi, mjehurići, kiša znakova ili bez animacije)
 - **stilizirana slika u pozadini** – kap, molekula glukoze i krivulja s ciljnim pojasom
 - **prozirnost kartica** – klizač od 0 do 70 %, koliko se pozadina vidi kroz kartice
@@ -219,6 +220,7 @@ Poslužitelj odbacuje duplikate. Ako poslužitelj nije dostupan, očitanja se č
 | PATCH | `/api/readings/<id>` | `{"note":"nakon večere"}` – izmjena napomene |
 | DELETE | `/api/readings/<id>` | brisanje |
 | GET | `/api/export.csv` | izvoz |
+| GET | `/api/token` | token za agente (samo uz prijavu) |
 | GET | `/api/settings` | postavke (`low`, `high`) i verzija programa |
 | PUT | `/api/settings` | `{"low":3.9,"high":10.0}` – novi ciljni raspon |
 | GET | `/api/health` | provjera rada (bez prijave) |

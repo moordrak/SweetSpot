@@ -155,6 +155,9 @@
                    background: var(--sw-line); }
   .toggle { display: flex; flex-direction: row; align-items: center; gap: 8px; font-size: 14px; color: var(--text-primary); }
   .toggle input { width: 18px; height: 18px; }
+  .token-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .token-row input { flex: 1 1 220px; min-width: 0; font-family: "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace;
+                     font-size: 14px; letter-spacing: .02em; }
   .slider-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .slider-row input[type=range] { flex: 1 1 200px; accent-color: var(--series-1); padding: 0; border: 0; background: none; }
   .slider-row output { min-width: 3.5em; font-variant-numeric: tabular-nums; font-weight: 600; }
@@ -294,6 +297,18 @@
           <button type="button" id="range-default">Vrati zadano</button>
         </div>
         <p class="error" id="range-error" role="alert"></p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Token za agente</legend>
+        <p class="hint">Upišite ga u Windows ili Android agenta zajedno s adresom poslužitelja. Isti je kao lozinka za ovu stranicu, pa ga ne dijelite.</p>
+        <div class="token-row">
+          <input id="token-value" type="password" readonly autocomplete="off" spellcheck="false" aria-label="Token">
+          <button type="button" id="token-show" aria-pressed="false">Prikaži</button>
+          <button type="button" id="token-copy">Kopiraj</button>
+        </div>
+        <p class="hint" id="token-status" role="status" style="margin-top:6px"></p>
+        <p class="hint">Adresa poslužitelja: <strong id="server-url"></strong></p>
       </fieldset>
 
       <fieldset>
@@ -707,6 +722,9 @@ function openSettings() {
   choiceList($("bg-choices"), "bg", BACKGROUNDS, look.bg, false);
   $("art-toggle").checked = look.art === "on";
   showGlass();
+  showToken(false);
+  $("server-url").textContent = location.origin;
+  loadToken();
   dlg.showModal();
 }
 
@@ -733,9 +751,45 @@ $("glass-default").addEventListener("click", () => {
   applyLook(); showGlass();
 });
 
+/* Token: dohvaća se tek kad se otvore postavke, prikazuje se na zahtjev. */
+async function loadToken() {
+  $("token-status").textContent = "";
+  if ($("token-value").value) return;
+  try {
+    const res = await fetch("/api/token");
+    if (!res.ok) throw new Error();
+    $("token-value").value = (await res.json()).token;
+  } catch (e) {
+    $("token-status").textContent = "Token nije dostupan.";
+  }
+}
+function showToken(show) {
+  $("token-value").type = show ? "text" : "password";
+  $("token-show").textContent = show ? "Sakrij" : "Prikaži";
+  $("token-show").setAttribute("aria-pressed", String(show));
+}
+$("token-show").addEventListener("click", () => showToken($("token-value").type === "password"));
+$("token-copy").addEventListener("click", async () => {
+  const field = $("token-value"), value = field.value;
+  if (!value) return;
+  let ok = false;
+  try {
+    // na običnom HTTP-u preglednik ne nudi clipboard API, pa se koristi stariji način
+    if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(value); ok = true; }
+  } catch (e) {}
+  if (!ok) {
+    const type = field.type;
+    field.type = "text"; field.select(); field.setSelectionRange(0, value.length);
+    try { ok = document.execCommand("copy"); } catch (e) {}
+    field.type = type; field.blur();
+  }
+  $("token-status").textContent = ok ? "Token je kopiran." : "Kopiranje nije uspjelo – kliknite Prikaži i kopirajte ga ručno.";
+});
+
 function closeSettings(keep) {
   if (!keep && lookBefore) { Object.assign(look, lookBefore); applyLook(); }
   lookBefore = null;
+  showToken(false);
   dlg.close();
 }
 

@@ -124,6 +124,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         if url.path == "/":
             return self.send(200, INDEX_HTML, "text/html; charset=utf-8")
+        if url.path == "/api/token":
+            # Token je i lozinka za web sučelje; prikazuje se u postavkama radi upisa u agente.
+            return self.send(200, {"token": API_TOKEN})
         if url.path == "/api/settings":
             db = open_db()
             try:
