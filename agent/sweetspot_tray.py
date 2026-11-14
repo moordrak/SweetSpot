@@ -161,16 +161,55 @@ def set_autostart(enabled):
 # ---------- ikona ----------
 
 def make_image(level="ok", size=64):
-    """Zaobljeni kvadrat u boji stanja s bijelom kapljicom."""
+    """SweetSpot logo: zaobljeni kvadrat u boji stanja, bijela kap, krivulja i točka u ciljnom pojasu.
+
+    Isti crtež kao docs/logo.svg (koordinate u mreži 64 x 64).
+    """
     from PIL import Image, ImageDraw
-    s = size * 4
+    k = size * 4 / 64                       # crta se 4x veće pa se smanji (glatki rubovi)
+    s = int(64 * k)
+    top, bottom = {"ok": ("#3b8be6", "#1b5cb0"), "warn": ("#f07a45", "#c74a17"),
+                   "idle": ("#9a9a96", "#6e6e6a")}[level]
+    hex2rgb = lambda h: tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
+    c1, c2 = hex2rgb(top), hex2rgb(bottom)
+    grad = Image.new("RGB", (s, s))
+    gd = ImageDraw.Draw(grad)
+    for i in range(2 * s):                  # dijagonalni prijelaz boje
+        t = i / (2 * s - 1)
+        gd.line([(i, 0), (0, i)], fill=tuple(round(a + (b - a) * t) for a, b in zip(c1, c2)), width=2)
+    mask = Image.new("L", (s, s), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, s - 1, s - 1), radius=int(14 * k), fill=255)
     img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    draw.rounded_rectangle((0, 0, s - 1, s - 1), radius=int(s * 0.22), fill=COLORS[level])
-    cx, cy, r = s / 2, s * 0.60, s * 0.21
-    draw.polygon([(cx, s * 0.15), (cx - r * 0.90, cy - r * 0.45), (cx + r * 0.90, cy - r * 0.45)],
-                 fill="white")
-    draw.ellipse((cx - r, cy - r, cx + r, cy + r), fill="white")
+    img.paste(grad, (0, 0), mask)
+
+    def bezier(p0, p1, p2, p3, n=24):
+        return [tuple((1 - t) ** 3 * a + 3 * (1 - t) ** 2 * t * b + 3 * (1 - t) * t ** 2 * c + t ** 3 * d
+                      for a, b, c, d in zip(p0, p1, p2, p3)) for t in (j / n for j in range(n + 1))]
+
+    def scaled(points):
+        return [(x * k, y * k) for x, y in points]
+
+    # kap: vrh (32,7), dno je krug polumjera 18 sa središtem (32,39.5)
+    drop = bezier((32, 7), (32, 7), (14, 27.5), (14, 39.5)) + \
+        [(32 - 18 * __import__("math").cos(a / 40 * __import__("math").pi),
+          39.5 + 18 * __import__("math").sin(a / 40 * __import__("math").pi)) for a in range(41)] + \
+        bezier((50, 39.5), (50, 27.5), (32, 7), (32, 7))
+    drop_mask = Image.new("L", (s, s), 0)
+    ImageDraw.Draw(drop_mask).polygon(scaled(drop), fill=255)
+    white = Image.new("RGBA", (s, s), (255, 255, 255, 255))
+    img.paste(white, (0, 0), drop_mask)
+
+    inside = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    d = ImageDraw.Draw(inside)
+    d.rectangle((10 * k, 36 * k, 54 * k, 45 * k), fill=(42, 120, 214, 36))
+    curve = bezier((11, 46), (16, 46), (19, 31.5), (24, 31.5)) + bezier((24, 31.5), (29, 31.5), (28.5, 40.5), (32, 40.5)) + \
+        bezier((32, 40.5), (35.5, 40.5), (36.5, 49.5), (40.5, 49.5)) + bezier((40.5, 49.5), (44.5, 49.5), (47, 39), (53, 39))
+    d.line(scaled(curve), fill=(42, 120, 214, 255), width=max(1, int(3 * k)), joint="curve")
+    img.paste(inside, (0, 0), Image.composite(inside, Image.new("RGBA", (s, s)), drop_mask).getchannel("A"))
+    dot = ImageDraw.Draw(img)
+    r1, r2 = 4.2 * k + 0.8 * k, 4.2 * k - 0.8 * k
+    dot.ellipse((32 * k - r1, 40.5 * k - r1, 32 * k + r1, 40.5 * k + r1), fill="white")
+    dot.ellipse((32 * k - r2, 40.5 * k - r2, 32 * k + r2, 40.5 * k + r2), fill="#eb6834")
     return img.resize((size, size), Image.LANCZOS)
 
 

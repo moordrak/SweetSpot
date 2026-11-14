@@ -1,39 +1,95 @@
 <!DOCTYPE html>
-<html lang="hr">
+<html lang="hr" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SweetSpot</title>
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgd2lkdGg9IjI1NiIgaGVpZ2h0PSIyNTYiIHJvbGU9ImltZyIgYXJpYS1sYWJlbD0iU3dlZXRTcG90Ij4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0ic3MtYmciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjM2I4YmU2Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzFiNWNiMCIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxjbGlwUGF0aCBpZD0ic3MtZHJvcCI+CiAgICAgIDxwYXRoIGQ9Ik0zMiA3QzMyIDcgMTQgMjcuNSAxNCAzOS41YTE4IDE4IDAgMCAwIDM2IDBDNTAgMjcuNSAzMiA3IDMyIDdaIi8+CiAgICA8L2NsaXBQYXRoPgogIDwvZGVmcz4KICA8cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHJ4PSIxNCIgZmlsbD0idXJsKCNzcy1iZykiLz4KICA8cGF0aCBkPSJNMzIgN0MzMiA3IDE0IDI3LjUgMTQgMzkuNWExOCAxOCAwIDAgMCAzNiAwQzUwIDI3LjUgMzIgNyAzMiA3WiIgZmlsbD0iI2ZmZiIvPgogIDxnIGNsaXAtcGF0aD0idXJsKCNzcy1kcm9wKSI+CiAgICA8cmVjdCB4PSIxMCIgeT0iMzYiIHdpZHRoPSI0NCIgaGVpZ2h0PSI5IiBmaWxsPSIjMmE3OGQ2IiBvcGFjaXR5PSIuMTQiLz4KICAgIDxwYXRoIGQ9Ik0xMSA0NkMxNiA0NiAxOSAzMS41IDI0IDMxLjVTMjguNSA0MC41IDMyIDQwLjUgMzYuNSA0OS41IDQwLjUgNDkuNSA0NyAzOSA1MyAzOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMmE3OGQ2IiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgogIDwvZz4KICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjQwLjUiIHI9IjQuMiIgZmlsbD0iI2ViNjgzNCIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjEuNiIvPgo8L3N2Zz4K">
+<script>
+  // Tema se postavlja prije iscrtavanja, da stranica ne bljesne u krivoj boji.
+  (function () {
+    var pref = "system";
+    try { pref = localStorage.getItem("ss-theme") || "system"; } catch (e) {}
+    var dark = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.dataset.theme = pref === "system" ? (dark ? "dark" : "light") : pref;
+  })();
+</script>
 <style>
-  :root {
+  /* ---------- teme ---------- */
+  :root, [data-theme="light"] {
     color-scheme: light;
-    --page: #f4f3ef; --surface-1: #fcfcfb; --text-primary: #0b0b0b; --text-secondary: #52514e;
-    --grid: #e1e0d9; --series-1: #2a78d6; --band: rgba(82, 81, 78, .08);
+    --page: #f4f3ef; --surface-solid: #fcfcfb; --text-primary: #0b0b0b; --text-secondary: #52514e;
+    --grid: #e1e0d9; --series-1: #2a78d6; --band: rgba(82, 81, 78, .08); --accent: #eb6834;
+    --anim: #2a78d6; --anim-opacity: .5; --art: #2a78d6; --art-opacity: .07;
+    --font: system-ui, -apple-system, "Segoe UI", sans-serif; --glass: 88%;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      color-scheme: dark;
-      --page: #111110; --surface-1: #1a1a19; --text-primary: #f0efec; --text-secondary: #c3c2b7;
-      --grid: #2c2c2a; --series-1: #3987e5; --band: rgba(195, 194, 183, .09);
-    }
+  [data-theme="sand"] {
+    color-scheme: light;
+    --page: #efe7da; --surface-solid: #fbf7f0; --text-primary: #2b2118; --text-secondary: #6b5a48;
+    --grid: #e2d6c3; --series-1: #c2571a; --band: rgba(107, 90, 72, .10); --accent: #2a78d6;
+    --anim: #c2571a; --anim-opacity: .45; --art: #a0581f; --art-opacity: .08;
   }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --page: #111110; --surface-solid: #1a1a19; --text-primary: #f0efec; --text-secondary: #c3c2b7;
+    --grid: #2c2c2a; --series-1: #3987e5; --band: rgba(195, 194, 183, .09); --accent: #d95926;
+    --anim: #3987e5; --anim-opacity: .55; --art: #3987e5; --art-opacity: .09;
+  }
+  [data-theme="midnight"] {
+    color-scheme: dark;
+    --page: #0b1020; --surface-solid: #121a2e; --text-primary: #e8edf7; --text-secondary: #a9b4cc;
+    --grid: #24304a; --series-1: #3d8ef0; --band: rgba(169, 180, 204, .09); --accent: #d95926;
+    --anim: #6b8fd6; --anim-opacity: .6; --art: #7f9be0; --art-opacity: .10;
+  }
+  [data-theme="matrix"] {
+    color-scheme: dark;
+    --page: #000000; --surface-solid: #020a03; --text-primary: #7dff9b; --text-secondary: #3fd166;
+    --grid: #0f3318; --series-1: #19ad43; --band: rgba(57, 255, 106, .08); --accent: #c8ffd4;
+    --anim: #19ad43; --anim-opacity: 1; --art: #19ad43; --art-opacity: .12;
+    --font: "Cascadia Mono", Consolas, "DejaVu Sans Mono", "Courier New", monospace; --glass: 80%;
+  }
+
+  /* ---------- osnova ---------- */
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--page); color: var(--text-primary);
-         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  main { max-width: 960px; margin: 0 auto; padding: 20px 16px 48px; }
-  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+  html { background: var(--page); }
+  body { margin: 0; color: var(--text-primary); font: 15px/1.45 var(--font); }
+  main { max-width: 960px; margin: 0 auto; padding: 20px 16px 24px; position: relative; }
+  #bg-anim, #bg-art { position: fixed; inset: 0; pointer-events: none; }
+  #bg-anim { z-index: -2; width: 100%; height: 100%; opacity: var(--anim-opacity); }
+  #bg-art { z-index: -1; display: flex; align-items: flex-end; justify-content: flex-end; overflow: hidden;
+            color: var(--art); opacity: var(--art-opacity); }
+  #bg-art svg { width: min(78vmin, 640px); height: auto; margin: 0 -4vmin -6vmin 0; flex: none; }
+  [data-art="off"] #bg-art { display: none; }
+
+  .top { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand svg { width: 36px; height: 36px; flex: none; }
   h1 { font-size: 22px; margin: 0; }
+  h1 small { font-size: 14px; font-weight: 400; color: var(--text-secondary); }
   h2 { font-size: 15px; margin: 0 0 10px; }
-  .card { background: var(--surface-1); border: 1px solid var(--grid); border-radius: 10px;
-          padding: 16px; margin-top: 16px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .ranges { display: flex; gap: 6px; }
+  .card, .tile, #tip, dialog {
+    background: color-mix(in srgb, var(--surface-solid) var(--glass), transparent);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  }
+  .card { border: 1px solid var(--grid); border-radius: 10px; padding: 16px; margin-top: 16px; }
+  .card > header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 6px; }
+  .card > header h2 { margin: 0; }
   .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 16px; }
-  .tile { background: var(--surface-1); border: 1px solid var(--grid); border-radius: 10px; padding: 12px 14px; }
+  .tile { border: 1px solid var(--grid); border-radius: 10px; padding: 12px 14px; }
   .tile .label { color: var(--text-secondary); font-size: 13px; }
   .tile .value { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
   .tile .unit { font-size: 13px; color: var(--text-secondary); font-weight: 400; }
-  .ranges button, button, .button { font: inherit; color: var(--text-primary); background: var(--surface-1);
+  button, .button { font: inherit; color: var(--text-primary); background: var(--surface-solid);
           border: 1px solid var(--grid); border-radius: 7px; padding: 6px 12px; cursor: pointer; text-decoration: none; }
+  button:hover, .button:hover { border-color: var(--text-secondary); }
+  button:focus-visible, .button:focus-visible, input:focus-visible { outline: 2px solid var(--series-1); outline-offset: 1px; }
+  button.primary { background: var(--series-1); border-color: var(--series-1); color: #fff; font-weight: 600; }
+  [data-theme="matrix"] button.primary { color: #000; }
   .ranges button[aria-pressed="true"] { border-color: var(--text-primary); font-weight: 600; }
+  .icon-button { display: inline-flex; align-items: center; justify-content: center; padding: 6px 8px; }
+  .icon-button svg { width: 20px; height: 20px; }
   form { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
   label { display: grid; gap: 4px; font-size: 13px; color: var(--text-secondary); }
   input { font: inherit; color: var(--text-primary); background: var(--page); border: 1px solid var(--grid);
@@ -41,9 +97,9 @@
   input[name=mmol] { width: 90px; } input[name=note] { width: 100%; }
   label.grow { flex: 1 1 180px; }
   #chart-wrap { position: relative; }
-  svg { display: block; width: 100%; }
-  svg text { fill: var(--text-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
-  #tip { position: absolute; pointer-events: none; background: var(--surface-1); border: 1px solid var(--grid);
+  #chart { display: block; width: 100%; }
+  #chart text { fill: var(--text-secondary); font-size: 12px; font-family: var(--font); font-variant-numeric: tabular-nums; }
+  #tip { position: absolute; pointer-events: none; border: 1px solid var(--grid);
          border-radius: 7px; padding: 6px 9px; font-size: 13px; white-space: nowrap; display: none;
          box-shadow: 0 2px 8px rgba(0,0,0,.15); }
   table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
@@ -55,8 +111,46 @@
   td.num { font-weight: 600; }
   td button { padding: 2px 8px; font-size: 13px; }
   td.actions { text-align: right; width: 1%; }
+  .muted { color: var(--text-secondary); }
+  .scroll { overflow-x: auto; }
+  footer { max-width: 960px; margin: 0 auto; padding: 8px 16px 32px; font-size: 13px; color: var(--text-secondary);
+           display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
+  footer a { color: inherit; }
+
+  /* ---------- postavke ---------- */
+  dialog { color: var(--text-primary); border: 1px solid var(--grid); border-radius: 12px; padding: 0;
+           width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 24px); box-shadow: 0 12px 40px rgba(0,0,0,.3); }
+  dialog::backdrop { background: rgba(0, 0, 0, .35); }
+  dialog form { display: block; }
+  .dlg-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px;
+              border-bottom: 1px solid var(--grid); }
+  .dlg-head h2 { margin: 0; font-size: 17px; }
+  .dlg-body { padding: 4px 18px 8px; overflow-y: auto; max-height: calc(100vh - 150px); }
+  .dlg-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 18px;
+              border-top: 1px solid var(--grid); }
+  fieldset { border: 0; padding: 0; margin: 16px 0 6px; min-width: 0; }
+  legend { font-weight: 600; padding: 0; margin-bottom: 4px; }
+  .hint { font-size: 13px; color: var(--text-secondary); margin: 0 0 10px; }
+  .range-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+  .range-row input { width: 110px; }
+  .choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .choice { position: relative; display: flex; align-items: center; gap: 10px; padding: 8px 10px; cursor: pointer;
+            border: 1px solid var(--grid); border-radius: 9px; color: var(--text-primary); font-size: 14px;
+            background: var(--surface-solid); }
+  .choice input { position: absolute; opacity: 0; pointer-events: none; }
+  .choice:has(input:checked) { border-color: var(--series-1); box-shadow: inset 0 0 0 1px var(--series-1); font-weight: 600; }
+  .choice:has(input:focus-visible) { outline: 2px solid var(--series-1); outline-offset: 1px; }
+  .swatch { width: 30px; height: 22px; border-radius: 5px; flex: none; border: 1px solid rgba(127,127,127,.35);
+            position: relative; overflow: hidden; }
+  .swatch::after { content: ""; position: absolute; left: 5px; right: 5px; top: 10px; height: 3px; border-radius: 2px;
+                   background: var(--sw-line); }
+  .toggle { display: flex; flex-direction: row; align-items: center; gap: 8px; font-size: 14px; color: var(--text-primary); }
+  .toggle input { width: 18px; height: 18px; }
+  .error { color: #c0392b; font-size: 13px; min-height: 1.2em; margin: 6px 0 0; }
+  [data-theme="dark"] .error, [data-theme="midnight"] .error, [data-theme="matrix"] .error { color: #ff8a80; }
+
   @media (max-width: 640px) {
-    main { padding: 16px 12px 40px; }
+    main { padding: 16px 12px 20px; }
     .card { padding: 14px 12px; }
     th, td { padding: 7px 5px; }
     th:first-child, td:first-child { padding-left: 0; }
@@ -65,27 +159,63 @@
     .note-inline { display: block; }
     .long { display: none; }
     .short { display: inline; }
+    .brand svg { width: 32px; height: 32px; }
   }
-  .muted { color: var(--text-secondary); }
-  .scroll { overflow-x: auto; }
 </style>
 </head>
 <body>
+<canvas id="bg-anim" aria-hidden="true"></canvas>
+<div id="bg-art" aria-hidden="true">
+  <!-- Stilizirana pozadinska slika: kap krvi, molekula glukoze i krivulja s ciljnim pojasom -->
+  <svg viewBox="0 0 600 600" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M330 70C330 70 150 270 150 390a180 180 0 0 0 360 0C510 270 330 70 330 70Z" stroke-width="6"/>
+    <path d="M330 120C330 120 190 285 190 390a140 140 0 0 0 280 0C470 285 330 120 330 120Z" stroke-width="2" stroke-dasharray="2 12"/>
+    <rect x="160" y="372" width="340" height="64" rx="4" fill="currentColor" fill-opacity=".18" stroke="none"/>
+    <path d="M150 455C200 455 215 330 265 330S315 405 330 405 380 490 420 490 470 395 510 395" stroke-width="7"/>
+    <circle cx="330" cy="405" r="16" fill="currentColor" stroke="none"/>
+    <circle cx="330" cy="405" r="30" stroke-width="3"/>
+    <g transform="translate(118 150)" stroke-width="5">
+      <path d="M0 -60 52 -30 52 30 0 60 -52 30 -52 -30Z"/>
+      <path d="M52 -30 90 -52M52 30 90 52M0 60 0 104M-52 30 -90 52M-52 -30 -82 -66"/>
+      <circle cx="0" cy="-60" r="13" fill="currentColor" stroke="none"/>
+    </g>
+    <g fill="currentColor" stroke="none" font-family="system-ui, sans-serif" font-weight="700" font-size="26">
+      <text x="212" y="102">OH</text><text x="212" y="216">OH</text><text x="100" y="282">OH</text>
+      <text x="-14" y="216">HO</text><text x="10" y="86">CH₂OH</text>
+    </g>
+    <g fill="currentColor" stroke="none">
+      <circle cx="540" cy="120" r="10"/><circle cx="500" cy="190" r="6"/><circle cx="560" cy="250" r="14"/>
+      <circle cx="80" cy="520" r="8"/><circle cx="120" cy="575" r="5"/>
+    </g>
+  </svg>
+</div>
+
 <main>
-  <header>
-    <h1>SweetSpot <span class="muted" style="font-size:14px;font-weight:400">dnevnik šećera</span></h1>
-    <div class="ranges" role="group" aria-label="Razdoblje">
-      <button data-days="7">7 dana</button>
-      <button data-days="30">30 dana</button>
-      <button data-days="90">90 dana</button>
-      <button data-days="0">Sve</button>
+  <div class="top">
+    <div class="brand">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="ss-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3b8be6"/><stop offset="1" stop-color="#1b5cb0"/></linearGradient><clipPath id="ss-drop"><path d="M32 7C32 7 14 27.5 14 39.5a18 18 0 0 0 36 0C50 27.5 32 7 32 7Z"/></clipPath></defs><rect width="64" height="64" rx="14" fill="url(#ss-bg)"/><path d="M32 7C32 7 14 27.5 14 39.5a18 18 0 0 0 36 0C50 27.5 32 7 32 7Z" fill="#fff"/><g clip-path="url(#ss-drop)"><rect x="10" y="36" width="44" height="9" fill="#2a78d6" opacity=".14"/><path d="M11 46C16 46 19 31.5 24 31.5S28.5 40.5 32 40.5 36.5 49.5 40.5 49.5 47 39 53 39" fill="none" stroke="#2a78d6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></g><circle cx="32" cy="40.5" r="4.2" fill="#eb6834" stroke="#fff" stroke-width="1.6"/></svg>
+      <h1>SweetSpot <small>dnevnik šećera</small></h1>
     </div>
-  </header>
+    <div class="controls">
+      <div class="ranges" role="group" aria-label="Razdoblje">
+        <button data-days="7">7 dana</button>
+        <button data-days="30">30 dana</button>
+        <button data-days="90">90 dana</button>
+        <button data-days="0">Sve</button>
+      </div>
+      <button id="open-settings" class="icon-button" aria-label="Postavke" title="Postavke">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
 
   <section class="tiles" id="tiles"></section>
 
   <section class="card">
-    <h2>Glukoza u krvi, mmol/L</h2>
+    <h2>Glukoza u krvi, mmol/L <small class="muted" id="range-label" style="font-weight:400"></small></h2>
     <div id="chart-wrap"><svg id="chart" viewBox="0 0 900 300" role="img" aria-label="Grafikon očitanja glukoze"></svg><div id="tip"></div></div>
   </section>
 
@@ -108,16 +238,208 @@
     </table></div>
   </section>
 </main>
+<footer>
+  <span id="version">SweetSpot</span><span aria-hidden="true">·</span>
+  <a href="https://github.com/moordrak/SweetSpot" target="_blank" rel="noopener">GitHub</a>
+</footer>
+
+<dialog id="settings" aria-labelledby="settings-title">
+  <form id="settings-form" method="dialog">
+    <div class="dlg-head">
+      <h2 id="settings-title">Postavke</h2>
+      <button type="button" class="icon-button" data-close aria-label="Zatvori">✕</button>
+    </div>
+    <div class="dlg-body">
+      <fieldset>
+        <legend>Ciljni raspon</legend>
+        <p class="hint">Označen je na grafikonu i koristi se za postotak „u rasponu“. Sprema se na poslužitelj i vrijedi na svim uređajima.</p>
+        <div class="range-row">
+          <label>Donja granica (mmol/L) <input name="low" inputmode="decimal" required></label>
+          <label>Gornja granica (mmol/L) <input name="high" inputmode="decimal" required></label>
+          <button type="button" id="range-default">Vrati zadano</button>
+        </div>
+        <p class="error" id="range-error" role="alert"></p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Tema</legend>
+        <div class="choices" id="theme-choices"></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Pozadina</legend>
+        <div class="choices" id="bg-choices"></div>
+        <p class="hint" style="margin-top:8px">Animacija miruje ako je u sustavu uključeno smanjeno kretanje.</p>
+        <label class="toggle"><input type="checkbox" id="art-toggle"> Stilizirana slika u pozadini</label>
+      </fieldset>
+      <p class="hint">Tema i pozadina pamte se na ovom uređaju.</p>
+    </div>
+    <div class="dlg-foot">
+      <span class="muted" id="settings-version"></span>
+      <span style="display:flex;gap:8px">
+        <button type="button" data-close>Zatvori</button>
+        <button type="submit" class="primary" id="settings-save">Spremi</button>
+      </span>
+    </div>
+  </form>
+</dialog>
 
 <script>
-const LOW = 3.9, HIGH = 10.0;           // raspon označen na grafikonu
-let all = [], days = Number(localStorage.getItem("days") ?? 30);
+const DEFAULT_RANGE = {low: 3.9, high: 10.0};
+let LOW = DEFAULT_RANGE.low, HIGH = DEFAULT_RANGE.high, VERSION = "";
 const $ = id => document.getElementById(id);
+const store = {
+  get(key, fallback) { try { return localStorage.getItem(key) ?? fallback; } catch (e) { return fallback; } },
+  set(key, value) { try { localStorage.setItem(key, value); } catch (e) {} },
+};
+let all = [], days = Number(store.get("days", 30));
 const fmt = v => v.toFixed(1).replace(".", ",");
 const fmtDate = d => d.toLocaleDateString("hr-HR", {day: "2-digit", month: "2-digit", year: "numeric"});
 const fmtTime = d => d.toLocaleTimeString("hr-HR", {hour: "2-digit", minute: "2-digit"});
 const esc = s => s.replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const parseNum = s => Number(String(s).trim().replace(",", "."));
 
+/* ---------- izgled: tema, animirana pozadina, slika ---------- */
+const THEMES = [
+  {id: "system", name: "Prema sustavu", bg: "linear-gradient(135deg,#fcfcfb 50%,#1a1a19 50%)", line: "#2a78d6"},
+  {id: "light", name: "Svijetla", bg: "#fcfcfb", line: "#2a78d6"},
+  {id: "sand", name: "Pijesak", bg: "#fbf7f0", line: "#c2571a"},
+  {id: "dark", name: "Tamna", bg: "#1a1a19", line: "#3987e5"},
+  {id: "midnight", name: "Ponoć", bg: "#121a2e", line: "#3d8ef0"},
+  {id: "matrix", name: "Matrix", bg: "#000", line: "#19ad43"},
+];
+const BACKGROUNDS = [
+  {id: "auto", name: "Prema temi"},
+  {id: "none", name: "Bez animacije"},
+  {id: "waves", name: "Valovi"},
+  {id: "bubbles", name: "Mjehurići"},
+  {id: "rain", name: "Kiša znakova"},
+];
+const look = {
+  theme: store.get("ss-theme", "system"),
+  bg: store.get("ss-bg", "auto"),
+  art: store.get("ss-art", "on"),
+};
+const darkQuery = matchMedia("(prefers-color-scheme: dark)");
+const motionQuery = matchMedia("(prefers-reduced-motion: reduce)");
+const resolvedTheme = () => look.theme === "system" ? (darkQuery.matches ? "dark" : "light") : look.theme;
+const resolvedBg = () => look.bg !== "auto" ? look.bg : (resolvedTheme() === "matrix" ? "rain" : "none");
+
+function applyLook() {
+  const root = document.documentElement;
+  root.dataset.theme = resolvedTheme();
+  root.dataset.art = look.art;
+  background.start(resolvedBg());
+  if (chartRows) drawChart();
+}
+darkQuery.addEventListener("change", () => look.theme === "system" && applyLook());
+motionQuery.addEventListener("change", () => background.start(resolvedBg()));
+
+/* Animirana pozadina na platnu iza sadržaja; ~30 sličica u sekundi, miruje kad je kartica skrivena. */
+const background = (() => {
+  const canvas = $("bg-anim"), ctx = canvas.getContext("2d");
+  let kind = "none", frame = 0, last = 0, w = 0, h = 0, dpr = 1, state = null, colors = {};
+  const GLYPHS = "0123456789アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワン+-=*<>";
+
+  function readColors() {
+    const css = getComputedStyle(document.documentElement);
+    colors = {anim: css.getPropertyValue("--anim").trim(), page: css.getPropertyValue("--page").trim(),
+              text: css.getPropertyValue("--text-primary").trim()};
+  }
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    w = innerWidth; h = innerHeight;
+    canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    init();
+  }
+  function rand(a, b) { return a + Math.random() * (b - a); }
+  function init() {
+    if (kind === "bubbles") {
+      const n = Math.round(Math.min(70, w * h / 22000));
+      state = Array.from({length: n}, () => ({x: rand(0, w), y: rand(0, h), r: rand(3, 26), v: rand(8, 26),
+                                               s: rand(0, Math.PI * 2), a: rand(.08, .22)}));
+    } else if (kind === "rain") {
+      const size = w < 600 ? 14 : 16;
+      state = {size, drops: Array.from({length: Math.ceil(w / size)}, () => rand(-h / size, 0)), acc: 0};
+      ctx.fillStyle = colors.page; ctx.fillRect(0, 0, w, h);
+    } else {
+      state = {t: rand(0, 100)};
+    }
+  }
+  function drawWaves(dt) {
+    state.t += dt;
+    ctx.clearRect(0, 0, w, h);
+    const layers = [[.62, 26, .00035, .16, .28], [.72, 34, .00025, .11, .2], [.82, 22, .00045, .08, .26]];
+    layers.forEach(([base, amp, freq, alpha, speed], i) => {
+      ctx.beginPath(); ctx.moveTo(0, h);
+      for (let x = 0; x <= w + 8; x += 8) {
+        const y = h * base + Math.sin(x * freq * 10 + state.t * speed + i * 2) * amp
+                + Math.sin(x * freq * 23 + state.t * speed * 1.7 + i) * amp * .35;
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(w, h); ctx.closePath();
+      ctx.globalAlpha = alpha; ctx.fillStyle = colors.anim; ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+  }
+  function drawBubbles(dt) {
+    ctx.clearRect(0, 0, w, h);
+    for (const b of state) {
+      b.y -= b.v * dt; b.s += dt * .6;
+      if (b.y < -b.r * 2) { b.y = h + b.r * 2; b.x = rand(0, w); }
+      const x = b.x + Math.sin(b.s) * 12;
+      ctx.globalAlpha = b.a * .55; ctx.fillStyle = colors.anim;
+      ctx.beginPath(); ctx.arc(x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = b.a; ctx.strokeStyle = colors.anim; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+  function drawRain(dt) {
+    state.acc += dt;
+    if (state.acc < .06) return;          // znakovi padaju ~16 puta u sekundi
+    state.acc = 0;
+    const {size, drops} = state;
+    ctx.globalAlpha = .12; ctx.fillStyle = colors.page; ctx.fillRect(0, 0, w, h);
+    ctx.globalAlpha = 1;
+    ctx.font = `${size}px "Cascadia Mono", Consolas, monospace`;
+    for (let i = 0; i < drops.length; i++) {
+      const y = drops[i] * size;
+      if (y > 0) {
+        ctx.fillStyle = Math.random() < .08 ? colors.text : colors.anim;
+        ctx.fillText(GLYPHS[Math.floor(Math.random() * GLYPHS.length)], i * size, y);
+      }
+      drops[i] += 1;
+      if (y > h && Math.random() > .975) drops[i] = rand(-20, 0);
+    }
+  }
+  const draw = {waves: drawWaves, bubbles: drawBubbles, rain: drawRain};
+  function loop(now) {
+    frame = requestAnimationFrame(loop);
+    if (now - last < 33) return;
+    const dt = Math.min((now - last) / 1000, .1); last = now;
+    draw[kind](dt);
+  }
+  function stop() { cancelAnimationFrame(frame); frame = 0; }
+  function start(next) {
+    stop(); kind = next; readColors();
+    canvas.style.display = kind === "none" ? "none" : "block";
+    if (kind === "none") return;
+    resize();
+    if (motionQuery.matches) {             // smanjeno kretanje: jedna mirna slika
+      if (kind === "rain") { for (let i = 0; i < 60; i++) drawRain(1); } else draw[kind](0);
+      return;
+    }
+    last = performance.now(); frame = requestAnimationFrame(loop);
+  }
+  addEventListener("resize", () => kind !== "none" && start(kind));
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stop(); else if (kind !== "none" && !frame) start(kind);
+  });
+  return {start};
+})();
+
+/* ---------- podaci ---------- */
 function visible() {
   if (!days) return all;
   const since = Date.now() - days * 864e5;
@@ -147,13 +469,15 @@ function render() {
       <td class="col-source">${esc(r.source)}</td><td class="note col-note">${esc(r.note)}</td>
       <td class="actions"><button data-id="${r.id}" aria-label="Obriši očitanje" title="Obriši"><span class="long">Obriši</span><span class="short" aria-hidden="true">✕</span></button></td></tr>`).join("")
     || `<tr><td colspan="6" class="muted">Nema očitanja u ovom razdoblju.</td></tr>`;
+  $("range-label").textContent = `· osjenčano: ciljni raspon ${fmt(LOW)}–${fmt(HIGH)}`;
   chartRows = rows.slice().reverse();
   drawChart();
 }
 
-let points = [], chartRows = [], chartW = 900;
+/* ---------- grafikon ---------- */
+let points = [], chartRows = null, chartW = 900;
 function drawChart() {
-  const rows = chartRows, svg = $("chart");
+  const rows = chartRows || [], svg = $("chart");
   const W = Math.max(260, Math.round($("chart-wrap").clientWidth || 900));
   const narrow = W < 560, H = narrow ? 220 : 300;
   const m = {l: narrow ? 26 : 34, r: 10, t: 12, b: 26};
@@ -162,7 +486,7 @@ function drawChart() {
   svg.setAttribute("height", H);
   if (!rows.length) { svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle">Nema podataka</text>`; points = []; return; }
   const t0 = +rows[0].date, t1 = Math.max(+rows[rows.length - 1].date, t0 + 36e5);
-  const yMax = Math.max(12, Math.ceil(Math.max(...rows.map(r => r.mmol)) + 1));
+  const yMax = Math.max(12, Math.ceil(Math.max(HIGH, ...rows.map(r => r.mmol)) + 1));
   const x = t => m.l + (t - t0) / (t1 - t0) * (W - m.l - m.r);
   const y = v => H - m.b - v / yMax * (H - m.t - m.b);
   let s = `<rect x="${m.l}" y="${y(HIGH)}" width="${W - m.l - m.r}" height="${y(LOW) - y(HIGH)}" fill="var(--band)"/>`;
@@ -180,9 +504,9 @@ function drawChart() {
         points="${points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")}"/>`;
   // točke samo kad ima mjesta (najmanje ~8 px po mjerenju)
   if (points.length <= (W - m.l - m.r) / 8)
-    s += points.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${narrow ? 3 : 4}" fill="var(--series-1)" stroke="var(--surface-1)" stroke-width="${narrow ? 1.5 : 2}"/>`).join("");
+    s += points.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${narrow ? 3 : 4}" fill="var(--series-1)" stroke="var(--surface-solid)" stroke-width="${narrow ? 1.5 : 2}"/>`).join("");
   s += `<line id="cross" y1="${m.t}" y2="${H - m.b}" stroke="var(--text-secondary)" stroke-dasharray="3 3" visibility="hidden"/>
-        <circle id="dot" r="6" fill="var(--series-1)" stroke="var(--surface-1)" stroke-width="2" visibility="hidden"/>`;
+        <circle id="dot" r="6" fill="var(--series-1)" stroke="var(--surface-solid)" stroke-width="2" visibility="hidden"/>`;
   svg.innerHTML = s;
 }
 
@@ -205,30 +529,47 @@ $("chart").addEventListener("pointermove", e => {
 let lastWidth = 0;
 new ResizeObserver(entries => {
   const width = Math.round(entries[0].contentRect.width);
-  if (width && width !== lastWidth) { lastWidth = width; drawChart(); }
+  if (width && width !== lastWidth) { lastWidth = width; if (chartRows) drawChart(); }
 }).observe($("chart-wrap"));
 $("chart").addEventListener("pointerleave", () => {
   $("tip").style.display = "none";
   ["cross", "dot"].forEach(id => $(id)?.setAttribute("visibility", "hidden"));
 });
 
+/* ---------- poslužitelj ---------- */
 async function load() {
   const res = await fetch("/api/readings");
   all = (await res.json()).map(r => ({...r, date: new Date(r.time)}));
   render();
 }
 
+async function loadSettings() {
+  try {
+    const res = await fetch("/api/settings");
+    if (!res.ok) return;
+    applySettings(await res.json());
+  } catch (e) {}
+}
+
+function applySettings(s) {
+  LOW = s.low; HIGH = s.high; VERSION = s.version || "";
+  const label = VERSION && VERSION !== "dev" ? `SweetSpot v${VERSION}` : "SweetSpot (razvojna verzija)";
+  $("version").textContent = label;
+  $("settings-version").textContent = label;
+  if (chartRows) render();
+}
+
 document.querySelector(".ranges").addEventListener("click", e => {
   if (e.target.dataset.days === undefined) return;
   days = Number(e.target.dataset.days);
-  localStorage.setItem("days", days);
+  store.set("days", days);
   render();
 });
 
 $("rows").addEventListener("click", async e => {
-  const id = e.target.dataset.id;
-  if (!id || !confirm("Obrisati ovo očitanje?")) return;
-  await fetch("/api/readings/" + id, {method: "DELETE"});
+  const button = e.target.closest("button[data-id]");
+  if (!button || !confirm("Obrisati ovo očitanje?")) return;
+  await fetch("/api/readings/" + button.dataset.id, {method: "DELETE"});
   load();
 });
 
@@ -239,7 +580,7 @@ function resetTime() {
 
 $("form").addEventListener("submit", async e => {
   e.preventDefault();
-  const f = e.target, mmol = Number(f.mmol.value.trim().replace(",", "."));
+  const f = e.target, mmol = parseNum(f.mmol.value);
   const res = await fetch("/api/readings", {
     method: "POST", headers: {"Content-Type": "application/json"},
     body: JSON.stringify({time: f.time.value, mmol, source: "ručno", note: f.note.value.trim()}),
@@ -248,8 +589,89 @@ $("form").addEventListener("submit", async e => {
   else $("message").textContent = (await res.json()).error || "Spremanje nije uspjelo.";
 });
 
+/* ---------- prozor s postavkama ---------- */
+const dlg = $("settings"), sform = $("settings-form");
+let lookBefore = null;
+
+function choiceList(container, name, items, current, swatch) {
+  container.innerHTML = items.map(item => `
+    <label class="choice">
+      <input type="radio" name="${name}" value="${item.id}" ${item.id === current ? "checked" : ""}>
+      ${swatch ? `<span class="swatch" style="background:${item.bg};--sw-line:${item.line}"></span>` : ""}
+      <span>${item.name}</span>
+    </label>`).join("");
+}
+
+function openSettings() {
+  lookBefore = {...look};
+  sform.low.value = fmt(LOW); sform.high.value = fmt(HIGH);
+  $("range-error").textContent = "";
+  choiceList($("theme-choices"), "theme", THEMES, look.theme, true);
+  choiceList($("bg-choices"), "bg", BACKGROUNDS, look.bg, false);
+  $("art-toggle").checked = look.art === "on";
+  dlg.showModal();
+}
+
+function closeSettings(keep) {
+  if (!keep && lookBefore) { Object.assign(look, lookBefore); applyLook(); }
+  lookBefore = null;
+  dlg.close();
+}
+
+// Promjena izgleda odmah se vidi; trajno se pamti tek kad se klikne Spremi.
+sform.addEventListener("change", e => {
+  if (e.target.name === "theme") look.theme = e.target.value;
+  else if (e.target.name === "bg") look.bg = e.target.value;
+  else if (e.target.id === "art-toggle") look.art = e.target.checked ? "on" : "off";
+  else return;
+  applyLook();
+});
+
+function checkRange() {
+  const low = parseNum(sform.low.value), high = parseNum(sform.high.value);
+  if (!Number.isFinite(low) || !Number.isFinite(high)) return [null, "Upišite obje granice, npr. 3,9 i 10,0."];
+  if (low < 2 || low > 10) return [null, "Donja granica mora biti između 2,0 i 10,0 mmol/L."];
+  if (high < 5 || high > 25) return [null, "Gornja granica mora biti između 5,0 i 25,0 mmol/L."];
+  if (high - low < 1) return [null, "Gornja granica mora biti barem 1,0 mmol/L iznad donje."];
+  return [{low: Math.round(low * 10) / 10, high: Math.round(high * 10) / 10}, null];
+}
+
+$("range-default").addEventListener("click", () => {
+  sform.low.value = fmt(DEFAULT_RANGE.low); sform.high.value = fmt(DEFAULT_RANGE.high);
+  $("range-error").textContent = "";
+});
+
+sform.addEventListener("submit", async e => {
+  e.preventDefault();
+  const [range, error] = checkRange();
+  if (error) { $("range-error").textContent = error; sform.low.focus(); return; }
+  if (range.low !== LOW || range.high !== HIGH) {
+    $("settings-save").disabled = true;
+    try {
+      const res = await fetch("/api/settings", {method: "PUT", headers: {"Content-Type": "application/json"},
+                                                body: JSON.stringify(range)});
+      const body = await res.json();
+      if (!res.ok) { $("range-error").textContent = body.error || "Spremanje nije uspjelo."; return; }
+      applySettings(body);
+    } catch (err) {
+      $("range-error").textContent = "Poslužitelj nije dostupan.";
+      return;
+    } finally {
+      $("settings-save").disabled = false;
+    }
+  }
+  store.set("ss-theme", look.theme); store.set("ss-bg", look.bg); store.set("ss-art", look.art);
+  closeSettings(true);
+});
+
+$("open-settings").addEventListener("click", openSettings);
+dlg.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => closeSettings(false)));
+dlg.addEventListener("cancel", e => { e.preventDefault(); closeSettings(false); });
+dlg.addEventListener("click", e => { if (e.target === dlg) closeSettings(false); });
+
+applyLook();
 resetTime();
-load();
+loadSettings().then(load);
 setInterval(load, 60000);
 </script>
 </body>

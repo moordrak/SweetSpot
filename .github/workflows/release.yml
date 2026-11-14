@@ -60,6 +60,8 @@ jobs:
         with:
           context: ./server
           platforms: linux/amd64,linux/arm64
+          build-args: |
+            VERSION=${{ steps.v.outputs.version }}
           push: true
           tags: |
             ${{ env.IMAGE }}:${{ steps.v.outputs.version }}

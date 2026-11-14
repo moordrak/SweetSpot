@@ -16,7 +16,10 @@ from urllib.parse import parse_qs, urlparse
 API_TOKEN = os.environ.get("API_TOKEN", "")
 DB_PATH = os.environ.get("DB_PATH", "/data/sweetspot.db")
 PORT = int(os.environ.get("PORT", "8080"))
+APP_VERSION = os.environ.get("APP_VERSION", "").strip() or "dev"
 INDEX_HTML = (Path(__file__).parent / "index.html").read_bytes()
+# Zadane postavke; spremljene vrijednosti iz baze ih nadjačavaju
+DEFAULT_SETTINGS = {"low": 3.9, "high": 10.0}
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
@@ -29,7 +32,37 @@ def open_db():
         izvor TEXT NOT NULL,
         napomena TEXT NOT NULL DEFAULT '',
         UNIQUE (vrijeme, mmol, izvor))""")
+    db.execute("CREATE TABLE IF NOT EXISTS postavke (kljuc TEXT PRIMARY KEY, vrijednost TEXT NOT NULL)")
     return db
+
+
+def load_settings(db):
+    settings = dict(DEFAULT_SETTINGS)
+    for key, value in db.execute("SELECT kljuc, vrijednost FROM postavke"):
+        if key in settings:
+            try:
+                settings[key] = json.loads(value)
+            except ValueError:
+                pass
+    return settings
+
+
+def clean_settings(payload):
+    """Provjerava nove postavke; vraća rječnik ili baca ValueError."""
+    if not isinstance(payload, dict):
+        raise ValueError("očekuje se JSON objekt")
+    try:
+        low = round(float(payload["low"]), 1)
+        high = round(float(payload["high"]), 1)
+    except (KeyError, TypeError, ValueError):
+        raise ValueError("potrebne su obje granice kao brojevi (low, high)") from None
+    if not 2.0 <= low <= 10.0:
+        raise ValueError("donja granica mora biti između 2,0 i 10,0 mmol/L")
+    if not 5.0 <= high <= 25.0:
+        raise ValueError("gornja granica mora biti između 5,0 i 25,0 mmol/L")
+    if high - low < 1.0:
+        raise ValueError("gornja granica mora biti barem 1,0 mmol/L iznad donje")
+    return {"low": low, "high": high}
 
 
 def clean_reading(item):
@@ -86,11 +119,17 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         url = urlparse(self.path)
         if url.path == "/api/health":
-            return self.send(200, {"status": "ok"})
+            return self.send(200, {"status": "ok", "version": APP_VERSION})
         if not self.authorized():
             return
         if url.path == "/":
             return self.send(200, INDEX_HTML, "text/html; charset=utf-8")
+        if url.path == "/api/settings":
+            db = open_db()
+            try:
+                return self.send(200, {**load_settings(db), "version": APP_VERSION})
+            finally:
+                db.close()
         db = open_db()
         try:
             rows = db.execute("SELECT id, vrijeme, mmol, izvor, napomena FROM ocitanja "
@@ -135,6 +174,25 @@ class Handler(BaseHTTPRequestHandler):
             db.close()
         self.send(200, {"received": len(readings), "new": new})
 
+    def do_PUT(self):
+        if not self.authorized():
+            return
+        if urlparse(self.path).path != "/api/settings":
+            return self.send(404, {"error": "Nije pronađeno."})
+        try:
+            settings = clean_settings(self.read_json())
+        except (KeyError, TypeError, ValueError) as exc:
+            return self.send(400, {"error": f"Neispravne postavke: {exc}"})
+        db = open_db()
+        try:
+            db.executemany("INSERT OR REPLACE INTO postavke (kljuc, vrijednost) VALUES (?, ?)",
+                           [(key, json.dumps(value)) for key, value in settings.items()])
+            db.commit()
+            saved = load_settings(db)
+        finally:
+            db.close()
+        self.send(200, {**saved, "version": APP_VERSION})
+
     def do_DELETE(self):
         if not self.authorized():
             return
@@ -165,5 +223,5 @@ if __name__ == "__main__":
         sys.exit("Postavite API_TOKEN (najmanje 8 znakova) u datoteci .env.")
     migrate_old_db()
     open_db().close()
-    print(f"SweetSpot sluša na portu {PORT}", flush=True)
+    print(f"SweetSpot {APP_VERSION} sluša na portu {PORT}", flush=True)
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()

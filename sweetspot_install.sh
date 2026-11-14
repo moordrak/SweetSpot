@@ -126,7 +126,7 @@ EOF
     if ! command -v git >/dev/null 2>&1 && command -v apt-get >/dev/null 2>&1; then
       apt-get update -qq && apt-get install -y -qq git >/dev/null
     fi
-    docker build -t "$IMAGE" "${REPO_URL}#${ref}:server"
+    docker build --build-arg "VERSION=${SWEETSPOT_VERSION#v}" -t "$IMAGE" "${REPO_URL}#${ref}:server"
   fi
 
   info "Pokrećem kontejner..."

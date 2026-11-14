@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="256" height="256" role="img" aria-label="SweetSpot">
+  <defs>
+    <linearGradient id="ss-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3b8be6"/>
+      <stop offset="1" stop-color="#1b5cb0"/>
+    </linearGradient>
+    <clipPath id="ss-drop">
+      <path d="M32 7C32 7 14 27.5 14 39.5a18 18 0 0 0 36 0C50 27.5 32 7 32 7Z"/>
+    </clipPath>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#ss-bg)"/>
+  <path d="M32 7C32 7 14 27.5 14 39.5a18 18 0 0 0 36 0C50 27.5 32 7 32 7Z" fill="#fff"/>
+  <g clip-path="url(#ss-drop)">
+    <rect x="10" y="36" width="44" height="9" fill="#2a78d6" opacity=".14"/>
+    <path d="M11 46C16 46 19 31.5 24 31.5S28.5 40.5 32 40.5 36.5 49.5 40.5 49.5 47 39 53 39" fill="none" stroke="#2a78d6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <circle cx="32" cy="40.5" r="4.2" fill="#eb6834" stroke="#fff" stroke-width="1.6"/>
+</svg>

@@ -1,4 +1,6 @@
-# SweetSpot
+<p align="center"><img src="docs/logo.svg" width="120" alt="SweetSpot logo"></p>
+
+<h1 align="center">SweetSpot</h1>
 
 Dnevnik šećera u krvi za vlastiti poslužitelj. Očitanja s Bluetooth aparata **Contour Next**
 automatski stižu u web aplikaciju koja radi u Dockeru.
@@ -13,10 +15,27 @@ Docker slika: `ghcr.io/moordrak/sweetspot` (amd64 i arm64).
 
 ### Web sučelje
 
-Grafikon s pojasom ciljnog raspona, prosjeci za odabrano razdoblje, ručni unos i popis očitanja.
-Tema se prilagođava postavci sustava (svijetla ili tamna).
+Grafikon s ciljnim rasponom, prosjeci za odabrano razdoblje, ručni unos i popis očitanja.
+Verzija programa vidi se u podnožju stranice i u postavkama.
 
-![Web sučelje SweetSpot, svijetla tema](docs/screenshots/web-svijetla.png)
+![Web sučelje SweetSpot, svijetla tema s valovima u pozadini](docs/screenshots/web-svijetla.png)
+
+**Teme:** Svijetla, Pijesak, Tamna, Ponoć i Matrix, a zadano se prati tema sustava.
+
+![Pet tema web sučelja](docs/screenshots/web-teme.png)
+
+![Tema Matrix s kišom znakova](docs/screenshots/web-matrix.png)
+
+**Postavke** (ikona zupčanika gore desno):
+
+- **ciljni raspon** – donja i gornja granica u mmol/L; sprema se na poslužitelj i vrijedi na svim uređajima
+- **tema** i **animirana pozadina** (valovi, mjehurići, kiša znakova ili bez animacije)
+- **stilizirana slika u pozadini** – kap, molekula glukoze i krivulja s ciljnim pojasom
+
+Tema i pozadina pamte se na svakom uređaju posebno. Ako je u sustavu uključeno smanjeno kretanje,
+pozadina se ne miče.
+
+![Postavke web sučelja](docs/screenshots/web-postavke.png)
 
 ![Web sučelje SweetSpot, tamna tema](docs/screenshots/web-tamna.png)
 
@@ -165,6 +184,8 @@ Poslužitelj odbacuje duplikate. Ako poslužitelj nije dostupan, očitanja se č
 | POST | `/api/readings` | `{"readings":[{"time":"2026-11-14T08:30:00","mmol":5.6,"source":"aparat"}]}` |
 | DELETE | `/api/readings/<id>` | brisanje |
 | GET | `/api/export.csv` | izvoz |
+| GET | `/api/settings` | postavke (`low`, `high`) i verzija programa |
+| PUT | `/api/settings` | `{"low":3.9,"high":10.0}` – novi ciljni raspon |
 | GET | `/api/health` | provjera rada (bez prijave) |
 
 Autorizacija: zaglavlje `Authorization: Bearer <API_TOKEN>`.
@@ -177,5 +198,5 @@ objavljuje je na `ghcr.io`, gradi Windows instalaciju agenta i stvara release sa
 
 ## Napomena
 
-SweetSpot je osobni dnevnik, a ne medicinski uređaj. Osjenčani raspon na grafikonu (3,9–10,0 mmol/L)
-može se promijeniti na vrhu skripte u `server/index.html`.
+SweetSpot je osobni dnevnik, a ne medicinski uređaj. Zadani ciljni raspon (3,9–10,0 mmol/L)
+mijenja se u postavkama web sučelja; dogovorite ga sa svojim liječnikom.
