@@ -1,20 +1,42 @@
 name: Release
 
-# Svaka oznaka oblika v1.2.3 gradi Docker sliku, objavljuje je na ghcr.io
-# i stvara GitHub release s instalacijskom skriptom i agentom.
+# Gradi Docker sliku, objavljuje je na ghcr.io i stvara GitHub release
+# s instalacijskom skriptom i agentom. Pokreće se kad se:
+#   - na grani main promijeni datoteka VERSION (npr. 1.0.0 -> 1.1.0),
+#   - na grani main promijeni ovaj workflow (ponovno objavljuje trenutnu verziju),
+#   - pošalje oznaka oblika v1.2.3, ili
+#   - ručno pokrene iz kartice Actions.
 on:
   push:
+    branches: [main]
+    paths: [VERSION, .github/workflows/release.yml]
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: write
   packages: write
+
+env:
+  IMAGE: ghcr.io/moordrak/sweetspot
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Verzija
+        id: v
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="$(tr -d ' \n\r' < VERSION)"
+          fi
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Neispravna verzija: $version"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "minor=${version%.*}" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
@@ -25,41 +47,46 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-
       - uses: docker/build-push-action@v6
         with:
           context: ./server
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.v.outputs.version }}
+            ${{ env.IMAGE }}:${{ steps.v.outputs.minor }}
+            ${{ env.IMAGE }}:latest
+          labels: |
+            org.opencontainers.image.title=SweetSpot
+            org.opencontainers.image.description=Dnevnik šećera za Contour Next
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.v.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
 
       - name: GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.v.outputs.version }}
         run: |
+          tag="v$VERSION"
           zip -r sweetspot-agent.zip agent
-          version="${GITHUB_REF_NAME#v}"
           cat > notes.md <<EOF
           ## Instalacija
 
           **Proxmox** (stvara LXC kontejner s Dockerom i pokreće SweetSpot), kao root na hostu:
 
-              wget https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/install.sh
+              wget https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}/install.sh
               bash install.sh
 
           **Postojeći Docker host:** \`bash install.sh --local\`
 
-          **Docker slika:** \`ghcr.io/moordrak/sweetspot:${version}\`
+          **Docker slika:** \`${IMAGE}:${VERSION}\`
 
           **Agent za PC:** raspakirajte \`sweetspot-agent.zip\` i slijedite upute u README-u.
           EOF
-          gh release create "$GITHUB_REF_NAME" install.sh sweetspot-agent.zip \
-            --title "SweetSpot $GITHUB_REF_NAME" --notes-file notes.md --generate-notes
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" install.sh sweetspot-agent.zip --clobber
+          else
+            gh release create "$tag" install.sh sweetspot-agent.zip --target "$GITHUB_SHA" \
+              --title "SweetSpot $tag" --notes-file notes.md
+          fi
