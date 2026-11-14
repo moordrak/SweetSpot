@@ -7,6 +7,8 @@
 # Na postojećem Docker hostu (VM ili LXC, kao root):   bash sweetspot_install.sh --local
 #   -> postavlja SweetSpot u /opt/sweetspot (Docker instalira samo ako ga nema).
 #
+# Na Proxmoxu skripta pita za root lozinku kontejnera (ili je zadajte s ROOT_PASSWORD=...).
+#
 # Postavke se mogu promijeniti varijablama okoline, npr.:
 #   CTID=150 STORAGE=local-zfs IP=192.168.1.60/24 GW=192.168.1.1 PORT=8085 bash sweetspot_install.sh
 set -euo pipefail
@@ -29,6 +31,7 @@ GW="${GW:-}"                                 # gateway, potreban uz statičku ad
 CORES="${CORES:-1}"
 MEMORY="${MEMORY:-512}"                      # MB
 DISK="${DISK:-4}"                            # GB
+ROOT_PASSWORD="${ROOT_PASSWORD:-}"           # prazno = skripta pita pri instalaciji
 
 info() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 fail() { printf '\033[1;31mGreška:\033[0m %s\n' "$*" >&2; exit 1; }
@@ -122,6 +125,31 @@ EOF
 # ---------------------------------------------------------------------------
 # Stvaranje LXC kontejnera na Proxmox hostu
 # ---------------------------------------------------------------------------
+ask_root_password() {
+  # Lozinka zadana varijablom ROOT_PASSWORD ili pokretanje bez terminala: bez pitanja.
+  if [ -n "$ROOT_PASSWORD" ] || [ ! -t 0 ]; then
+    return 0
+  fi
+  local first second
+  while true; do
+    read -rs -p "Root lozinka za kontejner (prazno = bez lozinke): " first; echo
+    if [ -z "$first" ]; then
+      info "Kontejner će biti bez root lozinke (ulaz samo s hosta: pct enter)."
+      return 0
+    fi
+    if [ "${#first}" -lt 5 ]; then
+      echo "Lozinka mora imati najmanje 5 znakova."
+      continue
+    fi
+    read -rs -p "Ponovite lozinku: " second; echo
+    if [ "$first" = "$second" ]; then
+      ROOT_PASSWORD="$first"
+      return 0
+    fi
+    echo "Lozinke se ne podudaraju, pokušajte ponovno."
+  done
+}
+
 install_proxmox() {
   local self
   self="$(readlink -f "${BASH_SOURCE[0]:-}" 2>/dev/null || true)"
@@ -142,6 +170,8 @@ install_proxmox() {
     fi
     [ -n "$STORAGE" ] || fail "Nema spremišta za kontejnere. Zadajte ga: STORAGE=... bash sweetspot_install.sh"
   fi
+
+  ask_root_password
 
   info "Tražim Debian predložak..."
   pveam update >/dev/null || true
@@ -170,6 +200,11 @@ install_proxmox() {
     --unprivileged 1 --features nesting=1,keyctl=1 \
     --onboot 1 >/dev/null
   pct start "$CTID"
+
+  if [ -n "$ROOT_PASSWORD" ]; then
+    printf 'root:%s\n' "$ROOT_PASSWORD" | pct exec "$CTID" -- chpasswd
+    info "Root lozinka je postavljena."
+  fi
 
   info "Čekam mrežu u kontejneru..."
   local i

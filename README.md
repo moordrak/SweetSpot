@@ -23,6 +23,9 @@ bash sweetspot_install.sh
 Skripta stvara neprivilegirani Debian LXC kontejner (1 jezgra, 512 MB RAM-a, 4 GB diska, DHCP na `vmbr0`),
 instalira Docker, pokreće SweetSpot i na kraju ispisuje adresu sučelja i generirani token.
 
+Na početku pita za root lozinku kontejnera. Prazan unos znači kontejner bez lozinke
+(ulaz samo s hosta: `pct enter CTID`). Za instalaciju bez pitanja zadajte `ROOT_PASSWORD=...`.
+
 Postavke se mijenjaju varijablama okoline:
 
 ```sh
