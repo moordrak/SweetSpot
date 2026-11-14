@@ -60,18 +60,48 @@ def parse_measurement(data):
     return {"time": when.isoformat(), "mmol": round(mmol, 1), "source": "aparat"}
 
 
-async def find_meter(timeout):
+def is_meter(device, adv):
+    """Contour aparat ili bilo koji uređaj sa standardnim Glucose servisom."""
+    name = (device.name or adv.local_name or "").lower()
+    return "contour" in name or GLUCOSE_SERVICE in (adv.service_uuids or [])
+
+
+async def find_meter(timeout, address=None, name=None):
+    """Čeka da se aparat pojavi. Uz zadanu adresu ili naziv traži samo taj aparat."""
     from bleak import BleakScanner
 
-    def is_meter(device, adv):
-        name = (device.name or adv.local_name or "").lower()
-        return "contour" in name or GLUCOSE_SERVICE in (adv.service_uuids or [])
+    def wanted(device, adv):
+        if not is_meter(device, adv):
+            return False
+        if not address and not name:
+            return True
+        found_name = device.name or adv.local_name or ""
+        return (bool(address) and device.address.lower() == address.lower()) \
+            or (bool(name) and found_name == name)
 
-    return await BleakScanner.find_device_by_filter(is_meter, timeout=timeout)
+    return await BleakScanner.find_device_by_filter(wanted, timeout=timeout)
 
 
-async def download(device):
+async def scan_meters(timeout=8):
+    """Popis aparata u blizini: [{'address', 'name', 'rssi', 'device'}], najjači signal prvi."""
+    from bleak import BleakScanner
+
+    found = await BleakScanner.discover(timeout=timeout, return_adv=True)
+    meters = [{"address": device.address,
+               "name": device.name or adv.local_name or device.address,
+               "rssi": adv.rssi if adv.rssi is not None else -999,
+               "device": device}
+              for device, adv in found.values() if is_meter(device, adv)]
+    return sorted(meters, key=lambda m: m["rssi"], reverse=True)
+
+
+async def download(device, progress=None):
+    """Spaja se na aparat i preuzima sva spremljena očitanja. progress(tekst) javlja korake."""
     from bleak import BleakClient
+
+    def step(text):
+        if progress:
+            progress(text)
 
     records, done, status = [], asyncio.Event(), {}
 
@@ -89,11 +119,14 @@ async def download(device):
             status["code"] = data[3] if len(data) > 3 else 1
             done.set()
 
+    step("Spajam se na aparat…")
     async with BleakClient(device, timeout=30) as client:
+        step("Uparujem (ako Windows pita, potvrdite uparivanje)…")
         try:
             await client.pair()           # nije podržano na macOS-u; tamo ide automatski
-        except Exception:
-            pass
+        except Exception as exc:
+            log.debug("Uparivanje preskočeno: %s", exc)
+        step("Preuzimam očitanja…")
         await client.start_notify(MEASUREMENT, on_measurement)
         try:
             await client.start_notify(CONTEXT, lambda *_: None)

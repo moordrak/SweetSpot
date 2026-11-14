@@ -54,7 +54,9 @@ jobs:
       - name: Provjera exe datoteke
         run: |
           $log = Join-Path $env:APPDATA 'SweetSpot\selftest.log'
+          $env:SWEETSPOT_SHOTS = "$env:GITHUB_WORKSPACE\screenshots"
           $p = Start-Process -FilePath dist\SweetSpotAgent\SweetSpotAgent.exe -ArgumentList '--selftest' -Wait -PassThru
+          $env:SWEETSPOT_SHOTS = $null
           if (Test-Path $log) { Get-Content $log }
           if ($p.ExitCode -ne 0) { throw "Selftest nije prošao (kod $($p.ExitCode))" }
 
@@ -92,6 +94,14 @@ jobs:
           if ($p.ExitCode -ne 0) { throw "Deinstalacija nije uspjela" }
           $run = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
           if ($run.'SweetSpot Agent') { throw "Deinstalacija nije uklonila pokretanje s Windowsima" }
+
+      - name: Slike prozora
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screenshots/
+          if-no-files-found: ignore
 
       - uses: actions/upload-artifact@v4
         with:
