@@ -100,11 +100,9 @@ Autorizacija: zaglavlje `Authorization: Bearer <API_TOKEN>`.
 
 ## Izdavanje nove verzije
 
-```sh
-git tag v1.1.0 && git push origin v1.1.0
-```
-
-GitHub Actions gradi Docker sliku, objavljuje je na `ghcr.io` i stvara release.
+Promijenite broj u datoteci `VERSION` i pošaljite promjenu na granu `main`
+(ili pošaljite oznaku oblika `v1.1.0`). GitHub Actions tada gradi Docker sliku,
+objavljuje je na `ghcr.io` i stvara release s `install.sh` i `sweetspot-agent.zip`.
 
 ## Napomena
 
