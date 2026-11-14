@@ -75,18 +75,19 @@ jobs:
 
           **Proxmox** (stvara LXC kontejner s Dockerom i pokreće SweetSpot), kao root na hostu:
 
-              wget https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}/install.sh
-              bash install.sh
+              wget https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}/sweetspot_install.sh
+              bash sweetspot_install.sh
 
-          **Postojeći Docker host:** \`bash install.sh --local\`
+          **Postojeći Docker host:** \`bash sweetspot_install.sh --local\`
 
           **Docker slika:** \`${IMAGE}:${VERSION}\`
 
           **Agent za PC:** raspakirajte \`sweetspot-agent.zip\` i slijedite upute u README-u.
           EOF
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" install.sh sweetspot-agent.zip --clobber
+            gh release edit "$tag" --notes-file notes.md
+            gh release upload "$tag" sweetspot_install.sh sweetspot-agent.zip --clobber
           else
-            gh release create "$tag" install.sh sweetspot-agent.zip --target "$GITHUB_SHA" \
+            gh release create "$tag" sweetspot_install.sh sweetspot-agent.zip --target "$GITHUB_SHA" \
               --title "SweetSpot $tag" --notes-file notes.md
           fi

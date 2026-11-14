@@ -5,7 +5,7 @@ automatski stižu u web aplikaciju koja radi u Dockeru.
 
 - **`server/`** – web aplikacija: grafikon, prosjeci, popis očitanja, ručni unos, izvoz u CSV, SQLite baza
 - **`agent/`** – program za PC koji preko Bluetootha čita aparat i šalje očitanja aplikaciji
-- **`install.sh`** – instalacijska skripta za Proxmox ili postojeći Docker host
+- **`sweetspot_install.sh`** – instalacijska skripta za Proxmox ili postojeći Docker host
 
 Docker slika: `ghcr.io/moordrak/sweetspot` (amd64 i arm64).
 
@@ -16,8 +16,8 @@ Docker slika: `ghcr.io/moordrak/sweetspot` (amd64 i arm64).
 Na Proxmox hostu, kao root:
 
 ```sh
-wget https://github.com/moordrak/SweetSpot/releases/latest/download/install.sh
-bash install.sh
+wget https://github.com/moordrak/SweetSpot/releases/latest/download/sweetspot_install.sh
+bash sweetspot_install.sh
 ```
 
 Skripta stvara neprivilegirani Debian LXC kontejner (1 jezgra, 512 MB RAM-a, 4 GB diska, DHCP na `vmbr0`),
@@ -26,13 +26,13 @@ instalira Docker, pokreće SweetSpot i na kraju ispisuje adresu sučelja i gener
 Postavke se mijenjaju varijablama okoline:
 
 ```sh
-CTID=150 STORAGE=local-zfs IP=192.168.1.60/24 GW=192.168.1.1 PORT=8085 bash install.sh
+CTID=150 STORAGE=local-zfs IP=192.168.1.60/24 GW=192.168.1.1 PORT=8085 bash sweetspot_install.sh
 ```
 
 ### Postojeći Docker host
 
 ```sh
-bash install.sh --local
+bash sweetspot_install.sh --local
 ```
 
 Postavlja SweetSpot u `/opt/sweetspot`. Ponovno pokretanje nadograđuje sliku, a token i baza ostaju.
@@ -102,7 +102,7 @@ Autorizacija: zaglavlje `Authorization: Bearer <API_TOKEN>`.
 
 Promijenite broj u datoteci `VERSION` i pošaljite promjenu na granu `main`
 (ili pošaljite oznaku oblika `v1.1.0`). GitHub Actions tada gradi Docker sliku,
-objavljuje je na `ghcr.io` i stvara release s `install.sh` i `sweetspot-agent.zip`.
+objavljuje je na `ghcr.io` i stvara release s `sweetspot_install.sh` i `sweetspot-agent.zip`.
 
 ## Napomena
 

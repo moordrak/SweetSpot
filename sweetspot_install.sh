@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Instalacija web aplikacije SweetSpot (dnevnik šećera).
 #
-# Na Proxmox hostu (kao root):   bash install.sh
+# Na Proxmox hostu (kao root):   bash sweetspot_install.sh
 #   -> stvara novi Debian LXC kontejner, instalira Docker i pokreće SweetSpot.
 #
-# Na postojećem Docker hostu (VM ili LXC, kao root):   bash install.sh --local
+# Na postojećem Docker hostu (VM ili LXC, kao root):   bash sweetspot_install.sh --local
 #   -> postavlja SweetSpot u /opt/sweetspot (Docker instalira samo ako ga nema).
 #
 # Postavke se mogu promijeniti varijablama okoline, npr.:
-#   CTID=150 STORAGE=local-zfs IP=192.168.1.60/24 GW=192.168.1.1 PORT=8085 bash install.sh
+#   CTID=150 STORAGE=local-zfs IP=192.168.1.60/24 GW=192.168.1.1 PORT=8085 bash sweetspot_install.sh
 set -euo pipefail
 
 VERSION="${VERSION:-latest}"                 # oznaka Docker slike, npr. 1.0.0
@@ -125,11 +125,11 @@ EOF
 install_proxmox() {
   local self
   self="$(readlink -f "${BASH_SOURCE[0]:-}" 2>/dev/null || true)"
-  [ -f "$self" ] || fail "Spremite skriptu u datoteku i pokrenite je s: bash install.sh"
+  [ -f "$self" ] || fail "Spremite skriptu u datoteku i pokrenite je s: bash sweetspot_install.sh"
 
   [ -n "$CTID" ] || CTID="$(pvesh get /cluster/nextid)"
   if pct status "$CTID" >/dev/null 2>&1; then
-    fail "Kontejner $CTID već postoji. Odaberite drugi ID: CTID=... bash install.sh"
+    fail "Kontejner $CTID već postoji. Odaberite drugi ID: CTID=... bash sweetspot_install.sh"
   fi
 
   if [ -z "$STORAGE" ]; then
@@ -140,7 +140,7 @@ install_proxmox() {
     else
       STORAGE="$(head -n1 <<<"$storages")"
     fi
-    [ -n "$STORAGE" ] || fail "Nema spremišta za kontejnere. Zadajte ga: STORAGE=... bash install.sh"
+    [ -n "$STORAGE" ] || fail "Nema spremišta za kontejnere. Zadajte ga: STORAGE=... bash sweetspot_install.sh"
   fi
 
   info "Tražim Debian predložak..."
@@ -182,9 +182,9 @@ install_proxmox() {
   done
 
   info "Instaliram SweetSpot u kontejneru..."
-  pct push "$CTID" "$self" /root/install.sh
+  pct push "$CTID" "$self" /root/sweetspot_install.sh
   pct exec "$CTID" -- env PORT="$PORT" API_TOKEN="$API_TOKEN" VERSION="$VERSION" IMAGE="$IMAGE" \
-    bash /root/install.sh --local
+    bash /root/sweetspot_install.sh --local
 
   cat <<EOF
 
