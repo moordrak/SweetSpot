@@ -7,6 +7,7 @@ automatski stižu u web aplikaciju koja radi u Dockeru.
 
 - **`server/`** – web aplikacija: grafikon, prosjeci, popis očitanja, ručni unos, izvoz u CSV, SQLite baza
 - **`agent/`** – program za PC (Windows instalacija s ikonom u system trayu, ili Python skripta) koji preko Bluetootha čita aparat i šalje očitanja aplikaciji
+- **`android/`** – agent za Android telefon: preuzima očitanja preko Bluetootha, i u pozadini, i šalje ih aplikaciji
 - **`sweetspot_install.sh`** – instalacijska skripta za Proxmox ili postojeći Docker host
 
 Docker slika: `ghcr.io/moordrak/sweetspot` (amd64 i arm64).
@@ -56,6 +57,16 @@ Na mobitelu:
 Ako spajanje ne uspije, čarobnjak prikaže razlog i što provjeriti:
 
 ![Čarobnjak, neuspjelo spajanje](docs/screenshots/windows-carobnjak-3-greska.png)
+
+### Agent za Android
+
+| Početni zaslon | Postavke | Tamna tema |
+|---|---|---|
+| ![Android agent, početni zaslon](docs/screenshots/android-pocetni.png) | ![Android agent, postavke](docs/screenshots/android-postavke.png) | ![Android agent, tamna tema](docs/screenshots/android-pocetni-tamno.png) |
+
+| Čarobnjak: priprema | Traženje aparata | Neuspjelo spajanje | Gotovo |
+|---|---|---|---|
+| ![Priprema](docs/screenshots/android-carobnjak-1-priprema.png) | ![Traženje aparata](docs/screenshots/android-carobnjak-2-trazenje.png) | ![Neuspjelo spajanje](docs/screenshots/android-carobnjak-3-greska.png) | ![Gotovo](docs/screenshots/android-carobnjak-4-gotovo.png) |
 
 Snimke su napravljene s probnim podacima.
 
@@ -145,6 +156,27 @@ i siva dok agent nije podešen. Postavke, zapisnik i neposlana očitanja su u `%
 Windows SmartScreen može upozoriti da je izdavač nepoznat jer instalacija nije digitalno potpisana:
 **More info → Run anyway**.
 
+### Android
+
+Preuzmite `SweetSpot-Android-x.y.z.apk` iz [zadnjeg izdanja](https://github.com/moordrak/SweetSpot/releases/latest)
+na telefon i otvorite ga. Android će tražiti dopuštenje za instalaciju iz tog izvora (preglednik ili upravitelj
+datoteka) – dopustite ga. Potreban je Android 12 ili noviji.
+
+Pri prvom pokretanju aplikacija otvara **Postavke** (adresa poslužitelja i token, uz gumb **Provjeri vezu**), a
+zatim **čarobnjak za povezivanje aparata**: priprema, dozvole (uređaji u blizini i obavijesti), traženje aparata,
+uparivanje s preuzimanjem očitanja i završni pregled. Ako telefon pri uparivanju traži PIN, upišite broj s ekrana aparata.
+
+Na početnom zaslonu su stanje (aparat, poslužitelj, zadnja sinkronizacija i zadnje očitanje), gumb
+**Sinkroniziraj sada**, prekidač **Sinkronizacija u pozadini**, **Otvori SweetSpot** i **Zapisnik**.
+
+**Sinkronizacija u pozadini:** telefon u pozadini osluškuje povezani aparat (štedljivo traženje koje vodi sustav,
+aplikacija ne mora biti otvorena). Kad se aparat pojavi u blizini, npr. nakon mjerenja, agent preuzme samo nova
+očitanja i pošalje ih. Ako poslužitelj nije dostupan (npr. niste u kućnoj mreži), očitanja čekaju na telefonu i
+šalju se kasnije, svakih 15 minuta dok ne prođu. Nakon ponovnog pokretanja telefona sve se samo uključuje.
+
+Aparat se spaja samo na jedan uređaj. Ako koristite i Windows agenta, onaj koji prvi uhvati aparat preuzet će
+očitanja; poslužitelj odbacuje duplikate, pa se ništa ne upisuje dvaput.
+
 ### Linux i macOS (Python)
 
 Potreban je Python 3.9+ i Bluetooth na računalu. Preuzmite `sweetspot-agent.zip` iz
@@ -192,6 +224,20 @@ Poslužitelj odbacuje duplikate. Ako poslužitelj nije dostupan, očitanja se č
 | GET | `/api/health` | provjera rada (bez prijave) |
 
 Autorizacija: zaglavlje `Authorization: Bearer <API_TOKEN>`.
+
+## Ključ za potpisivanje Android aplikacije
+
+Android dopušta nadogradnju samo ako je nova verzija potpisana istim ključem. Ključ se čuva u tajnama repozitorija
+(**Settings → Secrets and variables → Actions → New repository secret**):
+
+| Tajna | Sadržaj |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | datoteka ključa (`.jks`) kodirana u base64 |
+| `ANDROID_KEYSTORE_PASSWORD` | lozinka ključa |
+| `ANDROID_KEY_ALIAS` | `sweetspot` |
+
+Bez tih tajni gradi se samo razvojna inačica, a izdanje nema APK. Ključ i lozinku čuvajte i izvan GitHuba:
+bez njih se buduće verzije ne mogu instalirati preko postojeće.
 
 ## Izdavanje nove verzije
 
