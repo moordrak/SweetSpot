@@ -20,6 +20,10 @@ Tema se prilagođava postavci sustava (svijetla ili tamna).
 
 ![Web sučelje SweetSpot, tamna tema](docs/screenshots/web-tamna.png)
 
+Na mobitelu:
+
+![Web sučelje SweetSpot na mobitelu](docs/screenshots/web-mobitel.png)
+
 ### Agent za Windows
 
 | Postavke | Čarobnjak: priprema |

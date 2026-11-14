@@ -41,16 +41,31 @@
   input[name=mmol] { width: 90px; } input[name=note] { width: 100%; }
   label.grow { flex: 1 1 180px; }
   #chart-wrap { position: relative; }
-  svg { display: block; width: 100%; height: auto; }
+  svg { display: block; width: 100%; }
   svg text { fill: var(--text-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
   #tip { position: absolute; pointer-events: none; background: var(--surface-1); border: 1px solid var(--grid);
          border-radius: 7px; padding: 6px 9px; font-size: 13px; white-space: nowrap; display: none;
          box-shadow: 0 2px 8px rgba(0,0,0,.15); }
   table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--grid); }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  td.note { white-space: normal; min-width: 8em; }
+  .note-inline { display: none; white-space: normal; font-size: 13px; color: var(--text-secondary); }
+  .short { display: none; }
   th { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
   td.num { font-weight: 600; }
   td button { padding: 2px 8px; font-size: 13px; }
+  td.actions { text-align: right; width: 1%; }
+  @media (max-width: 640px) {
+    main { padding: 16px 12px 40px; }
+    .card { padding: 14px 12px; }
+    th, td { padding: 7px 5px; }
+    th:first-child, td:first-child { padding-left: 0; }
+    th:last-child, td:last-child { padding-right: 0; }
+    .col-source, .col-note { display: none; }
+    .note-inline { display: block; }
+    .long { display: none; }
+    .short { display: inline; }
+  }
   .muted { color: var(--text-secondary); }
   .scroll { overflow-x: auto; }
 </style>
@@ -88,7 +103,7 @@
   <section class="card">
     <header><h2>Očitanja</h2><a class="button" href="/api/export.csv">Izvoz u CSV</a></header>
     <div class="scroll"><table>
-      <thead><tr><th>Datum</th><th>Vrijeme</th><th>mmol/L</th><th>Izvor</th><th>Napomena</th><th></th></tr></thead>
+      <thead><tr><th>Datum</th><th>Vrijeme</th><th>mmol/L</th><th class="col-source">Izvor</th><th class="col-note">Napomena</th><th></th></tr></thead>
       <tbody id="rows"></tbody>
     </table></div>
   </section>
@@ -127,17 +142,24 @@ function render() {
   ].join("") : tile("Broj mjerenja", 0);
 
   $("rows").innerHTML = rows.map(r => `<tr>
-      <td>${fmtDate(r.date)}</td><td>${fmtTime(r.date)}</td><td class="num">${fmt(r.mmol)}</td>
-      <td>${esc(r.source)}</td><td>${esc(r.note)}</td>
-      <td><button data-id="${r.id}" aria-label="Obriši očitanje">Obriši</button></td></tr>`).join("")
+      <td>${fmtDate(r.date)}${r.note ? `<div class="note-inline">${esc(r.note)}</div>` : ""}</td>
+      <td>${fmtTime(r.date)}</td><td class="num">${fmt(r.mmol)}</td>
+      <td class="col-source">${esc(r.source)}</td><td class="note col-note">${esc(r.note)}</td>
+      <td class="actions"><button data-id="${r.id}" aria-label="Obriši očitanje" title="Obriši"><span class="long">Obriši</span><span class="short" aria-hidden="true">✕</span></button></td></tr>`).join("")
     || `<tr><td colspan="6" class="muted">Nema očitanja u ovom razdoblju.</td></tr>`;
-  drawChart(rows.slice().reverse());
+  chartRows = rows.slice().reverse();
+  drawChart();
 }
 
-let points = [];
-function drawChart(rows) {
-  const W = 900, H = 300, m = {l: 40, r: 16, t: 12, b: 28};
-  const svg = $("chart");
+let points = [], chartRows = [], chartW = 900;
+function drawChart() {
+  const rows = chartRows, svg = $("chart");
+  const W = Math.max(260, Math.round($("chart-wrap").clientWidth || 900));
+  const narrow = W < 560, H = narrow ? 220 : 300;
+  const m = {l: narrow ? 26 : 34, r: 10, t: 12, b: 26};
+  chartW = W;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("height", H);
   if (!rows.length) { svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle">Nema podataka</text>`; points = []; return; }
   const t0 = +rows[0].date, t1 = Math.max(+rows[rows.length - 1].date, t0 + 36e5);
   const yMax = Math.max(12, Math.ceil(Math.max(...rows.map(r => r.mmol)) + 1));
@@ -146,8 +168,8 @@ function drawChart(rows) {
   let s = `<rect x="${m.l}" y="${y(HIGH)}" width="${W - m.l - m.r}" height="${y(LOW) - y(HIGH)}" fill="var(--band)"/>`;
   for (let v = 0; v <= yMax; v += yMax > 16 ? 4 : 2)
     s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/>
-          <text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
-  const ticks = 5;
+          <text x="${m.l - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+  const ticks = narrow ? 3 : 5;
   for (let i = 0; i <= ticks; i++) {
     const t = t0 + (t1 - t0) * i / ticks, d = new Date(t);
     const text = t1 - t0 < 2 * 864e5 ? fmtTime(d) : d.toLocaleDateString("hr-HR", {day: "numeric", month: "numeric"});
@@ -156,8 +178,9 @@ function drawChart(rows) {
   points = rows.map(r => ({x: x(+r.date), y: y(r.mmol), r}));
   s += `<polyline fill="none" stroke="var(--series-1)" stroke-width="2" stroke-linejoin="round"
         points="${points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")}"/>`;
-  if (points.length <= 120)
-    s += points.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="var(--series-1)" stroke="var(--surface-1)" stroke-width="2"/>`).join("");
+  // točke samo kad ima mjesta (najmanje ~8 px po mjerenju)
+  if (points.length <= (W - m.l - m.r) / 8)
+    s += points.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${narrow ? 3 : 4}" fill="var(--series-1)" stroke="var(--surface-1)" stroke-width="${narrow ? 1.5 : 2}"/>`).join("");
   s += `<line id="cross" y1="${m.t}" y2="${H - m.b}" stroke="var(--text-secondary)" stroke-dasharray="3 3" visibility="hidden"/>
         <circle id="dot" r="6" fill="var(--series-1)" stroke="var(--surface-1)" stroke-width="2" visibility="hidden"/>`;
   svg.innerHTML = s;
@@ -165,7 +188,7 @@ function drawChart(rows) {
 
 $("chart").addEventListener("pointermove", e => {
   if (!points.length) return;
-  const box = $("chart").getBoundingClientRect(), scale = 900 / box.width;
+  const box = $("chart").getBoundingClientRect(), scale = chartW / box.width;
   const px = (e.clientX - box.left) * scale;
   const p = points.reduce((a, b) => Math.abs(b.x - px) < Math.abs(a.x - px) ? b : a);
   $("cross").setAttribute("x1", p.x); $("cross").setAttribute("x2", p.x);
@@ -179,6 +202,11 @@ $("chart").addEventListener("pointermove", e => {
   tip.style.right = right ? box.width - left + 12 + "px" : "";
   tip.style.top = Math.max(0, p.y / scale - 48) + "px";
 });
+let lastWidth = 0;
+new ResizeObserver(entries => {
+  const width = Math.round(entries[0].contentRect.width);
+  if (width && width !== lastWidth) { lastWidth = width; drawChart(); }
+}).observe($("chart-wrap"));
 $("chart").addEventListener("pointerleave", () => {
   $("tip").style.display = "none";
   ["cross", "dot"].forEach(id => $(id)?.setAttribute("visibility", "hidden"));
