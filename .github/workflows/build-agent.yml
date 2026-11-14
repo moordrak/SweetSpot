@@ -1,0 +1,100 @@
+name: Agent (Windows)
+
+# Gradi SweetSpotAgent.exe (PyInstaller) i instalaciju (Inno Setup) te ih provjerava.
+# Pokreće se na granama osim main kad se promijeni agent, a release workflow ga poziva pri izdanju.
+on:
+  push:
+    branches-ignore: [main]
+    paths: ["agent/**", ".github/workflows/build-agent.yml"]
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verzija
+        id: v
+        run: |
+          if ($env:GITHUB_REF -like 'refs/tags/v*') {
+            $version = $env:GITHUB_REF_NAME.TrimStart('v')
+          } else {
+            $version = (Get-Content VERSION -Raw).Trim()
+          }
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "Neispravna verzija: $version" }
+          Set-Content -Path VERSION -Value $version -NoNewline
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Paketi
+        run: python -m pip install --disable-pip-version-check -r agent/requirements.txt pyinstaller
+
+      - name: Ikona
+        run: python agent/make_icon.py build/sweetspot.ico
+
+      - name: PyInstaller
+        run: >
+          pyinstaller --noconfirm --clean --windowed --name SweetSpotAgent
+          --icon build/sweetspot.ico --add-data "VERSION;."
+          --hidden-import pystray._win32 --collect-submodules winrt
+          --distpath dist --workpath build/pyi
+          agent/sweetspot_tray.py
+
+      - name: Provjera exe datoteke
+        run: |
+          $log = Join-Path $env:APPDATA 'SweetSpot\selftest.log'
+          $p = Start-Process -FilePath dist\SweetSpotAgent\SweetSpotAgent.exe -ArgumentList '--selftest' -Wait -PassThru
+          if (Test-Path $log) { Get-Content $log }
+          if ($p.ExitCode -ne 0) { throw "Selftest nije prošao (kod $($p.ExitCode))" }
+
+      - name: Inno Setup
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
+          & $iscc "/DAppVersion=${{ steps.v.outputs.version }}" agent\installer.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC nije uspio" }
+
+      - name: Provjera instalacije
+        run: |
+          $setup = "dist\SweetSpot-Agent-Setup-${{ steps.v.outputs.version }}.exe"
+          $dir = "$env:RUNNER_TEMP\sweetspot-install"
+          $p = Start-Process -FilePath $setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$dir",'/TASKS=autostart' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Instalacija nije uspjela (kod $($p.ExitCode))" }
+          $log = Join-Path $env:APPDATA 'SweetSpot\selftest.log'
+          Remove-Item $log -ErrorAction SilentlyContinue
+          $p = Start-Process -FilePath "$dir\SweetSpotAgent.exe" -ArgumentList '--selftest' -Wait -PassThru
+          if (Test-Path $log) { Get-Content $log }
+          if ($p.ExitCode -ne 0) { throw "Instalirani agent ne prolazi selftest" }
+          $run = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+          if (-not $run.'SweetSpot Agent') { throw "Pokretanje s Windowsima nije upisano" }
+          "Pokretanje s Windowsima: $($run.'SweetSpot Agent')"
+
+          # Agent se mora pokrenuti i ostati raditi (ikona u trayu), a ne srušiti se pri startu
+          $agent = Start-Process -FilePath "$dir\SweetSpotAgent.exe" -PassThru
+          Start-Sleep -Seconds 12
+          $alive = -not $agent.HasExited
+          Get-Content (Join-Path $env:APPDATA 'SweetSpot\agent.log') -ErrorAction SilentlyContinue
+          if (-not $alive) { throw "Agent se ugasio odmah nakon pokretanja (kod $($agent.ExitCode))" }
+          Stop-Process -Id $agent.Id -Force
+
+          $p = Start-Process -FilePath "$dir\unins000.exe" -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Deinstalacija nije uspjela" }
+          $run = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+          if ($run.'SweetSpot Agent') { throw "Deinstalacija nije uklonila pokretanje s Windowsima" }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-setup
+          path: dist/SweetSpot-Agent-Setup-*.exe
+          if-no-files-found: error

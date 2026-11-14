@@ -127,10 +127,13 @@ def load_pending():
 
 
 def push(cfg, records):
-    """Šalje očitanja; ako poslužitelj nije dostupan, čuva ih za sljedeći pokušaj."""
+    """Šalje očitanja; ako poslužitelj nije dostupan, čuva ih za sljedeći pokušaj.
+
+    Vraća odgovor poslužitelja ({"received": n, "new": m}) ili None ako slanje nije uspjelo.
+    """
     queue = load_pending() + records
     if not queue:
-        return True
+        return {"received": 0, "new": 0}
     try:
         result = http(cfg, "/api/readings", {"readings": queue})
     except urllib.error.HTTPError as exc:
@@ -143,10 +146,10 @@ def push(cfg, records):
     else:
         log.info("Poslano %d očitanja, novih: %d.", result["received"], result["new"])
         PENDING.unlink(missing_ok=True)
-        return True
+        return result
     PENDING.write_text(json.dumps(queue), encoding="utf-8")
     log.info("Spremljeno %d očitanja za kasnije slanje.", len(queue))
-    return False
+    return None
 
 
 # ---------- glavna petlja ----------
