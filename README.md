@@ -16,7 +16,7 @@ Docker slika: `ghcr.io/moordrak/sweetspot` (amd64 i arm64).
 Na Proxmox hostu, kao root:
 
 ```sh
-wget https://github.com/moordrak/SweetSpot/releases/latest/download/sweetspot_install.sh
+wget -O sweetspot_install.sh https://github.com/moordrak/SweetSpot/releases/latest/download/sweetspot_install.sh
 bash sweetspot_install.sh
 ```
 

@@ -12,6 +12,10 @@
 # Postavke se mogu promijeniti varijablama okoline, npr.:
 #   CTID=150 STORAGE=local-zfs IP=192.168.1.60/24 GW=192.168.1.1 PORT=8085 bash sweetspot_install.sh
 set -euo pipefail
+export PATH="$PATH:/usr/sbin:/sbin"          # pct i srodni alati kad je root dobiven sa "su"
+
+SCRIPT_VERSION="dev"                         # pri izdanju se upisuje broj verzije
+RELEASES_URL="https://github.com/moordrak/SweetSpot/releases"
 
 VERSION="${VERSION:-latest}"                 # oznaka Docker slike, npr. 1.0.0
 IMAGE="${IMAGE:-ghcr.io/moordrak/sweetspot:${VERSION}}"
@@ -37,6 +41,23 @@ info() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 fail() { printf '\033[1;31mGreška:\033[0m %s\n' "$*" >&2; exit 1; }
 
 [ "$(id -u)" -eq 0 ] || fail "Pokrenite skriptu kao root."
+
+# Pokretanje kroz cijev (npr. "wget -qO- ... | bash"): skripta se sprema u datoteku
+# i pokreće iz nje, jer se kasnije kopira u kontejner.
+SELF="$(readlink -f "${BASH_SOURCE[0]:-}" 2>/dev/null || true)"
+if [ ! -f "$SELF" ]; then
+  SELF="$(mktemp /tmp/sweetspot_install.XXXXXX)"
+  if [ "$SCRIPT_VERSION" = "dev" ]; then
+    url="$RELEASES_URL/latest/download/sweetspot_install.sh"
+  else
+    url="$RELEASES_URL/download/v$SCRIPT_VERSION/sweetspot_install.sh"
+  fi
+  curl -fsSL "$url" -o "$SELF" 2>/dev/null || wget -qO "$SELF" "$url" \
+    || fail "Ne mogu preuzeti skriptu s $url"
+  exec bash "$SELF" "$@"
+fi
+
+info "SweetSpot instalacija, verzija skripte: $SCRIPT_VERSION"
 
 # ---------------------------------------------------------------------------
 # Instalacija na ovom računalu (Docker host)
@@ -126,35 +147,42 @@ EOF
 # Stvaranje LXC kontejnera na Proxmox hostu
 # ---------------------------------------------------------------------------
 ask_root_password() {
-  # Lozinka zadana varijablom ROOT_PASSWORD ili pokretanje bez terminala: bez pitanja.
-  if [ -n "$ROOT_PASSWORD" ] || [ ! -t 0 ]; then
+  if [ -n "$ROOT_PASSWORD" ]; then
+    info "Root lozinka je zadana varijablom ROOT_PASSWORD."
+    return 0
+  fi
+  # Čita se izravno s terminala, pa radi i kad je skripta pokrenuta kroz cijev.
+  if ! { exec 3<>/dev/tty; } 2>/dev/null; then
+    info "Nema terminala pa ne mogu pitati za root lozinku; kontejner ostaje bez nje."
+    info "Zadajte je s ROOT_PASSWORD=... ili naknadno: pct exec CTID -- passwd"
     return 0
   fi
   local first second
   while true; do
-    read -rs -p "Root lozinka za kontejner (prazno = bez lozinke): " first; echo
+    printf 'Root lozinka za kontejner (prazno = bez lozinke): ' >&3
+    IFS= read -rs -u 3 first || first=""
+    printf '\n' >&3
     if [ -z "$first" ]; then
       info "Kontejner će biti bez root lozinke (ulaz samo s hosta: pct enter)."
-      return 0
+      break
     fi
     if [ "${#first}" -lt 5 ]; then
-      echo "Lozinka mora imati najmanje 5 znakova."
+      printf 'Lozinka mora imati najmanje 5 znakova.\n' >&3
       continue
     fi
-    read -rs -p "Ponovite lozinku: " second; echo
+    printf 'Ponovite lozinku: ' >&3
+    IFS= read -rs -u 3 second || second=""
+    printf '\n' >&3
     if [ "$first" = "$second" ]; then
       ROOT_PASSWORD="$first"
-      return 0
+      break
     fi
-    echo "Lozinke se ne podudaraju, pokušajte ponovno."
+    printf 'Lozinke se ne podudaraju, pokušajte ponovno.\n' >&3
   done
+  exec 3>&-
 }
 
 install_proxmox() {
-  local self
-  self="$(readlink -f "${BASH_SOURCE[0]:-}" 2>/dev/null || true)"
-  [ -f "$self" ] || fail "Spremite skriptu u datoteku i pokrenite je s: bash sweetspot_install.sh"
-
   [ -n "$CTID" ] || CTID="$(pvesh get /cluster/nextid)"
   if pct status "$CTID" >/dev/null 2>&1; then
     fail "Kontejner $CTID već postoji. Odaberite drugi ID: CTID=... bash sweetspot_install.sh"
@@ -217,7 +245,7 @@ install_proxmox() {
   done
 
   info "Instaliram SweetSpot u kontejneru..."
-  pct push "$CTID" "$self" /root/sweetspot_install.sh
+  pct push "$CTID" "$SELF" /root/sweetspot_install.sh
   pct exec "$CTID" -- env PORT="$PORT" API_TOKEN="$API_TOKEN" VERSION="$VERSION" IMAGE="$IMAGE" \
     bash /root/sweetspot_install.sh --local
 

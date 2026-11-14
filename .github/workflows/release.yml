@@ -70,12 +70,13 @@ jobs:
         run: |
           tag="v$VERSION"
           zip -r sweetspot-agent.zip agent
+          sed -i "s/^SCRIPT_VERSION=.*/SCRIPT_VERSION=\"$VERSION\"/" sweetspot_install.sh
           cat > notes.md <<EOF
           ## Instalacija
 
           **Proxmox** (stvara LXC kontejner s Dockerom i pokreće SweetSpot), kao root na hostu:
 
-              wget https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}/sweetspot_install.sh
+              wget -O sweetspot_install.sh https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}/sweetspot_install.sh
               bash sweetspot_install.sh
 
           **Postojeći Docker host:** \`bash sweetspot_install.sh --local\`
