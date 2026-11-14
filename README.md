@@ -68,12 +68,23 @@ i pokrenite ga. Instalacija ne traži administratorska prava i nudi pokretanje p
 Agent radi kao ikona pored sata (system tray). Pri prvom pokretanju otvara **Postavke**, gdje upisujete
 adresu poslužitelja i token; gumb **Provjeri vezu** odmah pokazuje jesu li ispravni.
 
+Nakon spremanja postavki otvara se **čarobnjak za povezivanje aparata**, koji vodi kroz četiri koraka:
+
+1. **Priprema** – što uključiti i kako staviti aparat u način uparivanja.
+2. **Traženje aparata** – popis Contour aparata u blizini s jačinom signala.
+3. **Spajanje** – uparivanje i probno preuzimanje očitanja; ako ne uspije, nudi savjete i ponovni pokušaj.
+4. **Gotovo** – broj preuzetih očitanja i zadnje očitanje.
+
+Povezani aparat se pamti, pa agent ubuduće traži samo njega. Čarobnjak se može ponovno pokrenuti
+iz izbornika (**Poveži aparat…**).
+
 Desni klik na ikonu:
 
 - stanje agenta i vrijeme zadnje sinkronizacije
 - **Otvori SweetSpot** – web sučelje u pregledniku (i dvoklik na ikonu)
 - **Sinkroniziraj sada** – odmah traži aparat
 - **Postavke…** – adresa, token, pauza nakon preuzimanja
+- **Poveži aparat…** – čarobnjak za povezivanje aparata
 - **Pokreni s Windowsima** – uključuje i isključuje automatsko pokretanje
 - **Zapisnik** – otvara `agent.log`
 - **Izlaz**

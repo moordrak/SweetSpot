@@ -423,6 +423,15 @@ class Wizard:
         self.next_button.config(text=next_text, state="normal" if next_enabled else "disabled")
         self.cancel_button.config(state="normal" if cancel else "disabled")
 
+    def busy(self, on):
+        """Traka napretka vidi se samo dok radnja traje."""
+        if on:
+            self.progress.grid()
+            self.progress.start(12)
+        else:
+            self.progress.stop()
+            self.progress.grid_remove()
+
     def label(self, text="", row=0, **grid):
         widget = self.ttk.Label(self.body, text=text, wraplength=460, justify="left")
         widget.grid(row=row, column=0, sticky="w", **grid)
@@ -482,6 +491,7 @@ class Wizard:
         self.rescan_button = self.ttk.Button(self.body, text="Traži ponovno", command=self.start_scan)
         self.rescan_button.grid(row=3, column=0, sticky="w", pady=(10, 0))
         self.buttons(next_enabled=False)
+        self.progress.grid_remove()
         if self.autostart:
             self.start_scan()
 
@@ -489,13 +499,13 @@ class Wizard:
         self.meters = []
         self.listbox.delete(0, "end")
         self.status.config(text="Tražim aparate u blizini (oko 8 sekundi)…")
-        self.progress.start(12)
+        self.busy(True)
         self.rescan_button.config(state="disabled")
         self.buttons(next_enabled=False)
         self.run_job(agent.scan_meters(8), self.scan_done)
 
     def scan_done(self, meters, error):
-        self.progress.stop()
+        self.busy(False)
         self.rescan_button.config(state="normal")
         if error is not None:
             log.error("Traženje aparata nije uspjelo: %s", error)
@@ -522,9 +532,10 @@ class Wizard:
         self.progress.grid(row=1, column=0, sticky="we", pady=(6, 10))
         self.detail = self.label(row=2)
         self.buttons(back=False, next_enabled=False)
+        self.progress.grid_remove()
         if not self.autostart:
             return
-        self.progress.start(12)
+        self.busy(True)
         cfg, device = self.app.cfg, self.chosen["device"]
 
         def progress(text):             # zove Bluetooth dretva
@@ -538,7 +549,7 @@ class Wizard:
         self.run_job(job(), self.connect_done)
 
     def connect_done(self, result, error):
-        self.progress.stop()
+        self.busy(False)
         if error is not None:
             log.error("Povezivanje aparata nije uspjelo: %r", error)
             reason = ("Aparat nije odgovorio na vrijeme." if isinstance(error, asyncio.TimeoutError)
