@@ -1,0 +1,137 @@
+name: Agent (Android)
+
+# Gradi Android agenta, pokreće testove i lint te ga isprobava na emulatoru.
+# Pokreće se na granama osim main kad se promijeni Android kod, a release workflow ga poziva pri izdanju.
+on:
+  push:
+    branches-ignore: [main]
+    paths: ["android/**", ".github/workflows/build-android.yml"]
+  workflow_call:
+    inputs:
+      emulator:
+        type: boolean
+        default: false
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      signed: ${{ steps.key.outputs.signed }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verzija
+        id: v
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then version="${GITHUB_REF_NAME#v}"; else version="$(tr -d ' \n\r' < VERSION)"; fi
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Neispravna verzija: $version"; exit 1; }
+          echo -n "$version" > VERSION
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+
+      - name: Ključ za potpisivanje
+        id: key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/sweetspot.jks"
+            mkdir -p ~/.gradle
+            {
+              echo "sweetspot.keystoreFile=$RUNNER_TEMP/sweetspot.jks"
+              echo "sweetspot.keystorePassword=$KEYSTORE_PASSWORD"
+              echo "sweetspot.keyAlias=${KEY_ALIAS:-sweetspot}"
+              echo "sweetspot.keyPassword=${KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
+            } >> ~/.gradle/gradle.properties
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Tajne ANDROID_KEYSTORE_* nisu postavljene – gradi se samo razvojna (debug) inačica."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Testovi i lint
+        run: gradle -p android --no-daemon testDebugUnitTest lintDebug
+
+      - name: Izgradnja
+        run: |
+          tasks="assembleDebug"
+          [ "${{ steps.key.outputs.signed }}" = "true" ] && tasks="$tasks assembleRelease"
+          gradle -p android --no-daemon $tasks
+          mkdir -p dist
+          cp android/app/build/outputs/apk/debug/app-debug.apk "dist/SweetSpot-Android-${{ steps.v.outputs.version }}-debug.apk"
+          if [ "${{ steps.key.outputs.signed }}" = "true" ]; then
+            cp android/app/build/outputs/apk/release/app-release.apk "dist/SweetSpot-Android-${{ steps.v.outputs.version }}.apk"
+          fi
+          ls -la dist
+
+      - name: Izvještaj linta
+        if: failure()
+        run: |
+          f=android/app/build/reports/lint-results-debug.txt
+          [ -f "$f" ] && cat "$f" || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: dist/*.apk
+          if-no-files-found: error
+
+  emulator:
+    needs: build
+    if: github.event_name == 'push' && github.ref_name != 'main' || inputs.emulator
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-apk
+          path: dist
+      - name: KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Emulator i snimke zaslona
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: bash android/ci/screenshots.sh "$(ls dist/*-debug.apk)" screenshots
+      - name: Slike zaslona u zapisu
+        if: always()
+        run: |
+          for f in screenshots/*.png; do
+            [ -f "$f" ] || continue
+            python3 - "$f" <<'PY'
+          import sys, base64, io
+          from pathlib import Path
+          p = Path(sys.argv[1]); data = p.read_bytes()
+          try:
+              from PIL import Image
+              im = Image.open(io.BytesIO(data)); im.thumbnail((540, 1200)); buf = io.BytesIO(); im.save(buf, "PNG", optimize=True); data = buf.getvalue()
+          except Exception:
+              pass
+          b = base64.b64encode(data).decode()
+          print(f"SHOT-BEGIN {p.name}")
+          for i in range(0, len(b), 1000): print(b[i:i+1000])
+          print("SHOT-END")
+          PY
+          done
