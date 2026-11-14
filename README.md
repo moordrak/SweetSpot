@@ -4,7 +4,7 @@ Dnevnik šećera u krvi za vlastiti poslužitelj. Očitanja s Bluetooth aparata 
 automatski stižu u web aplikaciju koja radi u Dockeru.
 
 - **`server/`** – web aplikacija: grafikon, prosjeci, popis očitanja, ručni unos, izvoz u CSV, SQLite baza
-- **`agent/`** – program za PC koji preko Bluetootha čita aparat i šalje očitanja aplikaciji
+- **`agent/`** – program za PC (Windows instalacija s ikonom u system trayu, ili Python skripta) koji preko Bluetootha čita aparat i šalje očitanja aplikaciji
 - **`sweetspot_install.sh`** – instalacijska skripta za Proxmox ili postojeći Docker host
 
 Docker slika: `ghcr.io/moordrak/sweetspot` (amd64 i arm64).
@@ -60,6 +60,32 @@ Aplikacija sama ne radi HTTPS. Izvan kućne mreže izlažite je samo preko rever
 
 ## 2. Agent na PC-u
 
+### Windows
+
+Preuzmite `SweetSpot-Agent-Setup-x.y.z.exe` iz [zadnjeg izdanja](https://github.com/moordrak/SweetSpot/releases/latest)
+i pokrenite ga. Instalacija ne traži administratorska prava i nudi pokretanje pri prijavi u Windows.
+
+Agent radi kao ikona pored sata (system tray). Pri prvom pokretanju otvara **Postavke**, gdje upisujete
+adresu poslužitelja i token; gumb **Provjeri vezu** odmah pokazuje jesu li ispravni.
+
+Desni klik na ikonu:
+
+- stanje agenta i vrijeme zadnje sinkronizacije
+- **Otvori SweetSpot** – web sučelje u pregledniku (i dvoklik na ikonu)
+- **Sinkroniziraj sada** – odmah traži aparat
+- **Postavke…** – adresa, token, pauza nakon preuzimanja
+- **Pokreni s Windowsima** – uključuje i isključuje automatsko pokretanje
+- **Zapisnik** – otvara `agent.log`
+- **Izlaz**
+
+Ikona je plava kad sve radi, narančasta kad nešto ne valja (Bluetooth isključen, poslužitelj nedostupan)
+i siva dok agent nije podešen. Postavke, zapisnik i neposlana očitanja su u `%APPDATA%\SweetSpot`.
+
+Windows SmartScreen može upozoriti da je izdavač nepoznat jer instalacija nije digitalno potpisana:
+**More info → Run anyway**.
+
+### Linux i macOS (Python)
+
 Potreban je Python 3.9+ i Bluetooth na računalu. Preuzmite `sweetspot-agent.zip` iz
 [zadnjeg izdanja](https://github.com/moordrak/SweetSpot/releases/latest) i raspakirajte ga.
 
@@ -75,15 +101,13 @@ python sweetspot_agent.py --once    # jedno preuzimanje s aparata
 python sweetspot_agent.py           # radi stalno u pozadini
 ```
 
-U stalnom načinu agent čeka da se aparat pojavi (nakon mjerenja ili kad ga uključite), preuzme sva
-očitanja i pošalje ih. Poslužitelj odbacuje duplikate. Ako poslužitelj nije dostupan, očitanja ostaju
-u `neposlano.json` i šalju se kasnije.
+Za automatsko pokretanje na Linuxu: systemd korisnički servis s
+`ExecStart=python3 /putanja/agent/sweetspot_agent.py`.
 
-### Automatsko pokretanje
+### Kako agent radi
 
-- **Windows:** Task Scheduler → Create Task → okidač "At log on" →
-  radnja `pythonw.exe` s argumentom `C:\putanja\agent\sweetspot_agent.py`.
-- **Linux:** systemd korisnički servis s `ExecStart=python3 /putanja/agent/sweetspot_agent.py`.
+Agent čeka da se aparat pojavi (nakon mjerenja ili kad ga uključite), preuzme sva očitanja i pošalje ih.
+Poslužitelj odbacuje duplikate. Ako poslužitelj nije dostupan, očitanja se čuvaju i šalju kasnije.
 
 ### Bluetooth napomene
 
@@ -109,7 +133,7 @@ Autorizacija: zaglavlje `Authorization: Bearer <API_TOKEN>`.
 
 Promijenite broj u datoteci `VERSION` i pošaljite promjenu na granu `main`
 (ili pošaljite oznaku oblika `v1.1.0`). GitHub Actions tada gradi Docker sliku,
-objavljuje je na `ghcr.io` i stvara release s `sweetspot_install.sh` i `sweetspot-agent.zip`.
+objavljuje je na `ghcr.io`, gradi Windows instalaciju agenta i stvara release sa svim datotekama.
 
 ## Napomena
 

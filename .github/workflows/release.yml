@@ -1,7 +1,7 @@
 name: Release
 
 # Gradi Docker sliku, objavljuje je na ghcr.io i stvara GitHub release
-# s instalacijskom skriptom i agentom. Pokreće se kad se:
+# s instalacijskom skriptom, Windows instalacijom agenta i agentom u Pythonu. Pokreće se kad se:
 #   - na grani main promijeni datoteka VERSION (npr. 1.0.0 -> 1.1.0),
 #   - na grani main promijeni ovaj workflow (ponovno objavljuje trenutnu verziju),
 #   - pošalje oznaka oblika v1.2.3, ili
@@ -21,10 +21,19 @@ env:
   IMAGE: ghcr.io/moordrak/sweetspot
 
 jobs:
+  agent:
+    uses: ./.github/workflows/build-agent.yml
+
   release:
+    needs: agent
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: agent-setup
+          path: dist
 
       - name: Verzija
         id: v
@@ -69,7 +78,7 @@ jobs:
           VERSION: ${{ steps.v.outputs.version }}
         run: |
           tag="v$VERSION"
-          zip -r sweetspot-agent.zip agent
+          zip -r sweetspot-agent.zip agent -x 'agent/installer.iss' 'agent/make_icon.py'
           sed -i "s/^SCRIPT_VERSION=.*/SCRIPT_VERSION=\"$VERSION\"/" sweetspot_install.sh
           cat > notes.md <<EOF
           ## Instalacija
@@ -83,12 +92,14 @@ jobs:
 
           **Docker slika:** \`${IMAGE}:${VERSION}\`
 
-          **Agent za PC:** raspakirajte \`sweetspot-agent.zip\` i slijedite upute u README-u.
+          **Agent za Windows:** pokrenite \`SweetSpot-Agent-Setup-${VERSION}.exe\`, zatim desni klik na ikonu pored sata → Postavke.
+
+          **Agent za Linux/macOS:** raspakirajte \`sweetspot-agent.zip\` i slijedite upute u README-u.
           EOF
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release edit "$tag" --notes-file notes.md
-            gh release upload "$tag" sweetspot_install.sh sweetspot-agent.zip --clobber
+            gh release upload "$tag" sweetspot_install.sh sweetspot-agent.zip "dist/SweetSpot-Agent-Setup-$VERSION.exe" --clobber
           else
-            gh release create "$tag" sweetspot_install.sh sweetspot-agent.zip --target "$GITHUB_SHA" \
+            gh release create "$tag" sweetspot_install.sh sweetspot-agent.zip "dist/SweetSpot-Agent-Setup-$VERSION.exe" --target "$GITHUB_SHA" \
               --title "SweetSpot $tag" --notes-file notes.md
           fi
