@@ -1,0 +1,204 @@
+#!/usr/bin/env bash
+# Instalacija web aplikacije SweetSpot (dnevnik šećera).
+#
+# Na Proxmox hostu (kao root):   bash install.sh
+#   -> stvara novi Debian LXC kontejner, instalira Docker i pokreće SweetSpot.
+#
+# Na postojećem Docker hostu (VM ili LXC, kao root):   bash install.sh --local
+#   -> postavlja SweetSpot u /opt/sweetspot (Docker instalira samo ako ga nema).
+#
+# Postavke se mogu promijeniti varijablama okoline, npr.:
+#   CTID=150 STORAGE=local-zfs IP=192.168.1.60/24 GW=192.168.1.1 PORT=8085 bash install.sh
+set -euo pipefail
+
+VERSION="${VERSION:-latest}"                 # oznaka Docker slike, npr. 1.0.0
+IMAGE="${IMAGE:-ghcr.io/moordrak/sweetspot:${VERSION}}"
+REPO_URL="https://github.com/moordrak/SweetSpot.git"
+PORT="${PORT:-8085}"                         # port web sučelja
+API_TOKEN="${API_TOKEN:-}"                   # prazno = generira se nasumično
+INSTALL_DIR="${INSTALL_DIR:-/opt/sweetspot}"
+
+# Postavke LXC kontejnera (samo na Proxmox hostu)
+CTID="${CTID:-}"                             # prazno = sljedeći slobodni ID
+CT_HOSTNAME="${CT_HOSTNAME:-sweetspot}"
+STORAGE="${STORAGE:-}"                       # prazno = local-lvm ili prvo dostupno spremište
+TEMPLATE_STORAGE="${TEMPLATE_STORAGE:-local}"
+BRIDGE="${BRIDGE:-vmbr0}"
+IP="${IP:-dhcp}"                             # ili npr. 192.168.1.60/24
+GW="${GW:-}"                                 # gateway, potreban uz statičku adresu
+CORES="${CORES:-1}"
+MEMORY="${MEMORY:-512}"                      # MB
+DISK="${DISK:-4}"                            # GB
+
+info() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
+fail() { printf '\033[1;31mGreška:\033[0m %s\n' "$*" >&2; exit 1; }
+
+[ "$(id -u)" -eq 0 ] || fail "Pokrenite skriptu kao root."
+
+# ---------------------------------------------------------------------------
+# Instalacija na ovom računalu (Docker host)
+# ---------------------------------------------------------------------------
+install_local() {
+  if ! command -v docker >/dev/null 2>&1; then
+    info "Instaliram Docker..."
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -qq
+    apt-get install -y -qq curl ca-certificates >/dev/null
+    curl -fsSL https://get.docker.com | sh >/dev/null
+  fi
+  if docker compose version >/dev/null 2>&1; then
+    COMPOSE=(docker compose)
+  elif command -v docker-compose >/dev/null 2>&1; then
+    COMPOSE=(docker-compose)
+  else
+    fail "Nije pronađen 'docker compose'. Instalirajte paket docker-compose-plugin."
+  fi
+
+  info "Postavljam SweetSpot u $INSTALL_DIR..."
+  mkdir -p "$INSTALL_DIR/data"
+
+  cat > "$INSTALL_DIR/docker-compose.yml" <<EOF
+services:
+  sweetspot:
+    image: ${IMAGE}
+    container_name: sweetspot
+    restart: unless-stopped
+    ports:
+      - "${PORT}:8080"
+    environment:
+      API_TOKEN: \${API_TOKEN:?Postavite API_TOKEN u datoteci .env}
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/api/health"]
+      interval: 1m
+      timeout: 5s
+EOF
+
+  # Token: postojeći se čuva pri ponovnoj instalaciji
+  if [ -z "$API_TOKEN" ] && [ -f "$INSTALL_DIR/.env" ]; then
+    API_TOKEN="$(sed -n 's/^API_TOKEN=//p' "$INSTALL_DIR/.env" | head -n1)"
+  fi
+  if [ -z "$API_TOKEN" ]; then
+    API_TOKEN="$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+  fi
+  [ "${#API_TOKEN}" -ge 8 ] || fail "API_TOKEN mora imati najmanje 8 znakova."
+  printf 'API_TOKEN=%s\n' "$API_TOKEN" > "$INSTALL_DIR/.env"
+  chmod 600 "$INSTALL_DIR/.env"
+
+  info "Preuzimam sliku $IMAGE..."
+  if ! (cd "$INSTALL_DIR" && "${COMPOSE[@]}" pull -q); then
+    info "Slika nije dostupna, gradim je iz izvornog koda..."
+    local ref="main"
+    [ "$VERSION" = "latest" ] || ref="v${VERSION#v}"
+    if ! command -v git >/dev/null 2>&1 && command -v apt-get >/dev/null 2>&1; then
+      apt-get update -qq && apt-get install -y -qq git >/dev/null
+    fi
+    docker build -t "$IMAGE" "${REPO_URL}#${ref}:server"
+  fi
+
+  info "Pokrećem kontejner..."
+  (cd "$INSTALL_DIR" && "${COMPOSE[@]}" up -d)
+
+  local addr
+  addr="$(hostname -I 2>/dev/null | awk '{print $1}')"
+  cat <<EOF
+
+SweetSpot je instaliran.
+
+  Web sučelje:  http://${addr:-IP-ADRESA}:${PORT}
+  Prijava:      korisničko ime proizvoljno, lozinka je token
+  Token:        ${API_TOKEN}
+
+U agent/config.ini na PC-u upišite:
+  url = http://${addr:-IP-ADRESA}:${PORT}
+  token = ${API_TOKEN}
+
+Datoteke: ${INSTALL_DIR}   (baza: ${INSTALL_DIR}/data)
+Nadogradnja: ponovno pokrenite ovu skriptu s --local (token i baza ostaju).
+EOF
+}
+
+# ---------------------------------------------------------------------------
+# Stvaranje LXC kontejnera na Proxmox hostu
+# ---------------------------------------------------------------------------
+install_proxmox() {
+  local self
+  self="$(readlink -f "${BASH_SOURCE[0]:-}" 2>/dev/null || true)"
+  [ -f "$self" ] || fail "Spremite skriptu u datoteku i pokrenite je s: bash install.sh"
+
+  [ -n "$CTID" ] || CTID="$(pvesh get /cluster/nextid)"
+  if pct status "$CTID" >/dev/null 2>&1; then
+    fail "Kontejner $CTID već postoji. Odaberite drugi ID: CTID=... bash install.sh"
+  fi
+
+  if [ -z "$STORAGE" ]; then
+    local storages
+    storages="$(pvesm status -content rootdir | awk 'NR>1 && $3=="active" {print $1}')"
+    if grep -qx 'local-lvm' <<<"$storages"; then
+      STORAGE=local-lvm
+    else
+      STORAGE="$(head -n1 <<<"$storages")"
+    fi
+    [ -n "$STORAGE" ] || fail "Nema spremišta za kontejnere. Zadajte ga: STORAGE=... bash install.sh"
+  fi
+
+  info "Tražim Debian predložak..."
+  pveam update >/dev/null || true
+  local template
+  template="$(pveam list "$TEMPLATE_STORAGE" 2>/dev/null \
+    | awk '{print $1}' | grep -E 'debian-1[23]-standard' | sort -V | tail -n1 || true)"
+  if [ -z "$template" ]; then
+    local name
+    name="$(pveam available --section system | awk '{print $2}' \
+      | grep -E '^debian-1[23]-standard' | sort -V | tail -n1 || true)"
+    [ -n "$name" ] || fail "Nije pronađen Debian predložak (pveam available)."
+    info "Preuzimam $name..."
+    pveam download "$TEMPLATE_STORAGE" "$name" >/dev/null
+    template="$TEMPLATE_STORAGE:vztmpl/$name"
+  fi
+
+  local net="name=eth0,bridge=$BRIDGE,ip=$IP"
+  [ -z "$GW" ] || net="$net,gw=$GW"
+
+  info "Stvaram kontejner $CTID ($CT_HOSTNAME) na spremištu $STORAGE..."
+  pct create "$CTID" "$template" \
+    --hostname "$CT_HOSTNAME" \
+    --cores "$CORES" --memory "$MEMORY" --swap 256 \
+    --rootfs "$STORAGE:$DISK" \
+    --net0 "$net" \
+    --unprivileged 1 --features nesting=1,keyctl=1 \
+    --onboot 1 >/dev/null
+  pct start "$CTID"
+
+  info "Čekam mrežu u kontejneru..."
+  local i
+  for i in $(seq 1 30); do
+    if pct exec "$CTID" -- getent hosts deb.debian.org >/dev/null 2>&1; then
+      break
+    fi
+    [ "$i" -lt 30 ] || fail "Kontejner $CTID nema pristup mreži. Provjerite BRIDGE/IP/GW."
+    sleep 2
+  done
+
+  info "Instaliram SweetSpot u kontejneru..."
+  pct push "$CTID" "$self" /root/install.sh
+  pct exec "$CTID" -- env PORT="$PORT" API_TOKEN="$API_TOKEN" VERSION="$VERSION" IMAGE="$IMAGE" \
+    bash /root/install.sh --local
+
+  cat <<EOF
+
+Kontejner: $CTID ($CT_HOSTNAME)   ulaz: pct enter $CTID
+EOF
+}
+
+case "${1:-}" in
+  --local) install_local ;;
+  "")
+    if command -v pct >/dev/null 2>&1; then
+      install_proxmox
+    else
+      install_local
+    fi ;;
+  *) fail "Nepoznata opcija: $1 (dopušteno: --local)" ;;
+esac

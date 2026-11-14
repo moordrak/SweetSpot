@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SweetSpot</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f4f3ef; --surface-1: #fcfcfb; --text-primary: #0b0b0b; --text-secondary: #52514e;
+    --grid: #e1e0d9; --series-1: #2a78d6; --band: rgba(82, 81, 78, .08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --page: #111110; --surface-1: #1a1a19; --text-primary: #f0efec; --text-secondary: #c3c2b7;
+      --grid: #2c2c2a; --series-1: #3987e5; --band: rgba(195, 194, 183, .09);
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--text-primary);
+         font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 20px 16px 48px; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+  h1 { font-size: 22px; margin: 0; }
+  h2 { font-size: 15px; margin: 0 0 10px; }
+  .card { background: var(--surface-1); border: 1px solid var(--grid); border-radius: 10px;
+          padding: 16px; margin-top: 16px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 16px; }
+  .tile { background: var(--surface-1); border: 1px solid var(--grid); border-radius: 10px; padding: 12px 14px; }
+  .tile .label { color: var(--text-secondary); font-size: 13px; }
+  .tile .value { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .tile .unit { font-size: 13px; color: var(--text-secondary); font-weight: 400; }
+  .ranges button, button, .button { font: inherit; color: var(--text-primary); background: var(--surface-1);
+          border: 1px solid var(--grid); border-radius: 7px; padding: 6px 12px; cursor: pointer; text-decoration: none; }
+  .ranges button[aria-pressed="true"] { border-color: var(--text-primary); font-weight: 600; }
+  form { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+  label { display: grid; gap: 4px; font-size: 13px; color: var(--text-secondary); }
+  input { font: inherit; color: var(--text-primary); background: var(--page); border: 1px solid var(--grid);
+          border-radius: 7px; padding: 6px 8px; }
+  input[name=mmol] { width: 90px; } input[name=note] { width: 100%; }
+  label.grow { flex: 1 1 180px; }
+  #chart-wrap { position: relative; }
+  svg { display: block; width: 100%; height: auto; }
+  svg text { fill: var(--text-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
+  #tip { position: absolute; pointer-events: none; background: var(--surface-1); border: 1px solid var(--grid);
+         border-radius: 7px; padding: 6px 9px; font-size: 13px; white-space: nowrap; display: none;
+         box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--grid); }
+  th { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+  td.num { font-weight: 600; }
+  td button { padding: 2px 8px; font-size: 13px; }
+  .muted { color: var(--text-secondary); }
+  .scroll { overflow-x: auto; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>SweetSpot <span class="muted" style="font-size:14px;font-weight:400">dnevnik šećera</span></h1>
+    <div class="ranges" role="group" aria-label="Razdoblje">
+      <button data-days="7">7 dana</button>
+      <button data-days="30">30 dana</button>
+      <button data-days="90">90 dana</button>
+      <button data-days="0">Sve</button>
+    </div>
+  </header>
+
+  <section class="tiles" id="tiles"></section>
+
+  <section class="card">
+    <h2>Glukoza u krvi, mmol/L</h2>
+    <div id="chart-wrap"><svg id="chart" viewBox="0 0 900 300" role="img" aria-label="Grafikon očitanja glukoze"></svg><div id="tip"></div></div>
+  </section>
+
+  <section class="card">
+    <h2>Ručni unos</h2>
+    <form id="form">
+      <label>mmol/L <input name="mmol" inputmode="decimal" placeholder="5,6" required></label>
+      <label>Datum i vrijeme <input name="time" type="datetime-local" required></label>
+      <label class="grow">Napomena <input name="note" maxlength="200"></label>
+      <button type="submit">Dodaj</button>
+    </form>
+    <p id="message" class="muted" role="status"></p>
+  </section>
+
+  <section class="card">
+    <header><h2>Očitanja</h2><a class="button" href="/api/export.csv">Izvoz u CSV</a></header>
+    <div class="scroll"><table>
+      <thead><tr><th>Datum</th><th>Vrijeme</th><th>mmol/L</th><th>Izvor</th><th>Napomena</th><th></th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table></div>
+  </section>
+</main>
+
+<script>
+const LOW = 3.9, HIGH = 10.0;           // raspon označen na grafikonu
+let all = [], days = Number(localStorage.getItem("days") ?? 30);
+const $ = id => document.getElementById(id);
+const fmt = v => v.toFixed(1).replace(".", ",");
+const fmtDate = d => d.toLocaleDateString("hr-HR", {day: "2-digit", month: "2-digit", year: "numeric"});
+const fmtTime = d => d.toLocaleTimeString("hr-HR", {hour: "2-digit", minute: "2-digit"});
+const esc = s => s.replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+
+function visible() {
+  if (!days) return all;
+  const since = Date.now() - days * 864e5;
+  return all.filter(r => r.date >= since);
+}
+
+function render() {
+  document.querySelectorAll(".ranges button").forEach(b =>
+    b.setAttribute("aria-pressed", String(Number(b.dataset.days) === days)));
+  const rows = visible();
+  const values = rows.map(r => r.mmol);
+  const avg = values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
+  const inRange = values.filter(v => v >= LOW && v <= HIGH).length;
+  const tile = (label, value, unit = "") =>
+    `<div class="tile"><div class="label">${label}</div><div class="value">${value} <span class="unit">${unit}</span></div></div>`;
+  $("tiles").innerHTML = values.length ? [
+    tile("Prosjek", fmt(avg), "mmol/L"),
+    tile("Najniže", fmt(Math.min(...values)), "mmol/L"),
+    tile("Najviše", fmt(Math.max(...values)), "mmol/L"),
+    tile(`U rasponu ${fmt(LOW)}–${fmt(HIGH)}`, Math.round(100 * inRange / values.length), "%"),
+    tile("Broj mjerenja", values.length),
+  ].join("") : tile("Broj mjerenja", 0);
+
+  $("rows").innerHTML = rows.map(r => `<tr>
+      <td>${fmtDate(r.date)}</td><td>${fmtTime(r.date)}</td><td class="num">${fmt(r.mmol)}</td>
+      <td>${esc(r.source)}</td><td>${esc(r.note)}</td>
+      <td><button data-id="${r.id}" aria-label="Obriši očitanje">Obriši</button></td></tr>`).join("")
+    || `<tr><td colspan="6" class="muted">Nema očitanja u ovom razdoblju.</td></tr>`;
+  drawChart(rows.slice().reverse());
+}
+
+let points = [];
+function drawChart(rows) {
+  const W = 900, H = 300, m = {l: 40, r: 16, t: 12, b: 28};
+  const svg = $("chart");
+  if (!rows.length) { svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle">Nema podataka</text>`; points = []; return; }
+  const t0 = +rows[0].date, t1 = Math.max(+rows[rows.length - 1].date, t0 + 36e5);
+  const yMax = Math.max(12, Math.ceil(Math.max(...rows.map(r => r.mmol)) + 1));
+  const x = t => m.l + (t - t0) / (t1 - t0) * (W - m.l - m.r);
+  const y = v => H - m.b - v / yMax * (H - m.t - m.b);
+  let s = `<rect x="${m.l}" y="${y(HIGH)}" width="${W - m.l - m.r}" height="${y(LOW) - y(HIGH)}" fill="var(--band)"/>`;
+  for (let v = 0; v <= yMax; v += yMax > 16 ? 4 : 2)
+    s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/>
+          <text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+  const ticks = 5;
+  for (let i = 0; i <= ticks; i++) {
+    const t = t0 + (t1 - t0) * i / ticks, d = new Date(t);
+    const text = t1 - t0 < 2 * 864e5 ? fmtTime(d) : d.toLocaleDateString("hr-HR", {day: "numeric", month: "numeric"});
+    s += `<text x="${x(t)}" y="${H - 8}" text-anchor="${i === 0 ? "start" : i === ticks ? "end" : "middle"}">${text}</text>`;
+  }
+  points = rows.map(r => ({x: x(+r.date), y: y(r.mmol), r}));
+  s += `<polyline fill="none" stroke="var(--series-1)" stroke-width="2" stroke-linejoin="round"
+        points="${points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")}"/>`;
+  if (points.length <= 120)
+    s += points.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="var(--series-1)" stroke="var(--surface-1)" stroke-width="2"/>`).join("");
+  s += `<line id="cross" y1="${m.t}" y2="${H - m.b}" stroke="var(--text-secondary)" stroke-dasharray="3 3" visibility="hidden"/>
+        <circle id="dot" r="6" fill="var(--series-1)" stroke="var(--surface-1)" stroke-width="2" visibility="hidden"/>`;
+  svg.innerHTML = s;
+}
+
+$("chart").addEventListener("pointermove", e => {
+  if (!points.length) return;
+  const box = $("chart").getBoundingClientRect(), scale = 900 / box.width;
+  const px = (e.clientX - box.left) * scale;
+  const p = points.reduce((a, b) => Math.abs(b.x - px) < Math.abs(a.x - px) ? b : a);
+  $("cross").setAttribute("x1", p.x); $("cross").setAttribute("x2", p.x);
+  $("dot").setAttribute("cx", p.x); $("dot").setAttribute("cy", p.y);
+  $("cross").setAttribute("visibility", "visible"); $("dot").setAttribute("visibility", "visible");
+  const tip = $("tip");
+  tip.innerHTML = `<strong>${fmt(p.r.mmol)} mmol/L</strong><br><span class="muted">${fmtDate(p.r.date)} ${fmtTime(p.r.date)}</span>`;
+  tip.style.display = "block";
+  const left = p.x / scale, right = left > box.width / 2;
+  tip.style.left = right ? "" : left + 12 + "px";
+  tip.style.right = right ? box.width - left + 12 + "px" : "";
+  tip.style.top = Math.max(0, p.y / scale - 48) + "px";
+});
+$("chart").addEventListener("pointerleave", () => {
+  $("tip").style.display = "none";
+  ["cross", "dot"].forEach(id => $(id)?.setAttribute("visibility", "hidden"));
+});
+
+async function load() {
+  const res = await fetch("/api/readings");
+  all = (await res.json()).map(r => ({...r, date: new Date(r.time)}));
+  render();
+}
+
+document.querySelector(".ranges").addEventListener("click", e => {
+  if (e.target.dataset.days === undefined) return;
+  days = Number(e.target.dataset.days);
+  localStorage.setItem("days", days);
+  render();
+});
+
+$("rows").addEventListener("click", async e => {
+  const id = e.target.dataset.id;
+  if (!id || !confirm("Obrisati ovo očitanje?")) return;
+  await fetch("/api/readings/" + id, {method: "DELETE"});
+  load();
+});
+
+function resetTime() {
+  const now = new Date();
+  $("form").time.value = new Date(now - now.getTimezoneOffset() * 6e4).toISOString().slice(0, 16);
+}
+
+$("form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = e.target, mmol = Number(f.mmol.value.trim().replace(",", "."));
+  const res = await fetch("/api/readings", {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({time: f.time.value, mmol, source: "ručno", note: f.note.value.trim()}),
+  });
+  if (res.ok) { $("message").textContent = "Očitanje je spremljeno."; f.mmol.value = ""; f.note.value = ""; resetTime(); load(); }
+  else $("message").textContent = (await res.json()).error || "Spremanje nije uspjelo.";
+});
+
+resetTime();
+load();
+setInterval(load, 60000);
+</script>
+</body>
+</html>

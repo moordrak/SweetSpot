@@ -1,0 +1,5 @@
+.env
+data/
+__pycache__/
+*.pyc
+agent/neposlano.json

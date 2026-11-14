@@ -1,0 +1,17 @@
+services:
+  sweetspot:
+    image: ghcr.io/moordrak/sweetspot:latest
+    # Za lokalnu izgradnju umjesto gotove slike:  docker compose up -d --build
+    build: ./server
+    container_name: sweetspot
+    restart: unless-stopped
+    ports:
+      - "8085:8080"
+    environment:
+      API_TOKEN: ${API_TOKEN:?Postavite API_TOKEN u datoteci .env}
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/api/health"]
+      interval: 1m
+      timeout: 5s
