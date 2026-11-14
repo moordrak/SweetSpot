@@ -95,6 +95,15 @@ jobs:
           $run = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
           if ($run.'SweetSpot Agent') { throw "Deinstalacija nije uklonila pokretanje s Windowsima" }
 
+      - name: Slike prozora u zapisu (grane u razvoju)
+        if: always() && github.ref_name != 'main' && !startsWith(github.ref, 'refs/tags/')
+        run: |
+          Get-ChildItem screenshots -File -ErrorAction SilentlyContinue | ForEach-Object {
+            "SHOT-BEGIN $($_.Name)"
+            [Convert]::ToBase64String([IO.File]::ReadAllBytes($_.FullName)) -split '(.{1000})' | Where-Object { $_ }
+            "SHOT-END"
+          }
+
       - name: Slike prozora
         if: always()
         uses: actions/upload-artifact@v4
