@@ -5,7 +5,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.text.format.DateUtils
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -179,7 +178,7 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
             StatusLine("Aparat", settings.meterName.ifBlank { "nije povezan" })
             StatusLine("Poslužitelj", settings.url.ifBlank { "nije podešen" })
             StatusLine("Zadnja sinkronizacija", if (settings.lastSyncMillis == 0L) "još nije bilo" else
-                DateUtils.getRelativeTimeSpanString(settings.lastSyncMillis).toString() + " (novih: ${settings.lastNew})")
+                relativeTime(settings.lastSyncMillis) + " (novih: ${settings.lastNew})")
             if (settings.lastReading.isNotBlank()) StatusLine("Zadnje očitanje", settings.lastReading)
             if (settings.pendingCount > 0) StatusLine("Čeka slanje", "${settings.pendingCount} očitanja")
         }
@@ -234,6 +233,21 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
             Icon(Icons.Outlined.Description, contentDescription = null, Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp)); Text("Zapisnik")
         }
+    }
+}
+
+/** Vrijeme u prošlosti na hrvatskom, neovisno o jeziku telefona: "prije 12 min", "jučer u 20:10"… */
+fun relativeTime(millis: Long, now: Long = System.currentTimeMillis()): String {
+    val minutes = (now - millis) / 60_000
+    val zone = java.time.ZoneId.systemDefault()
+    val then = java.time.Instant.ofEpochMilli(millis).atZone(zone)
+    val today = java.time.Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+    return when {
+        minutes < 1 -> "upravo"
+        minutes < 60 -> "prije $minutes min"
+        then.toLocalDate() == today -> "danas u ${then.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))}"
+        then.toLocalDate() == today.minusDays(1) -> "jučer u ${then.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))}"
+        else -> then.format(java.time.format.DateTimeFormatter.ofPattern("d.M.yyyy. HH:mm"))
     }
 }
 

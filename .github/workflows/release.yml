@@ -24,8 +24,12 @@ jobs:
   agent:
     uses: ./.github/workflows/build-agent.yml
 
+  android:
+    uses: ./.github/workflows/build-android.yml
+    secrets: inherit
+
   release:
-    needs: agent
+    needs: [agent, android]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,6 +38,11 @@ jobs:
         with:
           name: agent-setup
           path: dist
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-apk
+          path: android-dist
 
       - name: Verzija
         id: v
@@ -80,6 +89,15 @@ jobs:
           VERSION: ${{ steps.v.outputs.version }}
         run: |
           tag="v$VERSION"
+          assets=(sweetspot_install.sh sweetspot-agent.zip "dist/SweetSpot-Agent-Setup-$VERSION.exe")
+          # Android: samo potpisana inačica (razvojna se ne može nadograđivati)
+          if [ -f "android-dist/SweetSpot-Android-$VERSION.apk" ]; then
+            cp "android-dist/SweetSpot-Android-$VERSION.apk" dist/
+            assets+=("dist/SweetSpot-Android-$VERSION.apk")
+            android_note="**Agent za Android:** instalirajte \`SweetSpot-Android-${VERSION}.apk\` na telefon (Android 12 ili noviji)."
+          else
+            android_note="**Agent za Android:** ovo izdanje nema APK jer ključ za potpisivanje nije postavljen u tajnama repozitorija."
+          fi
           zip -r sweetspot-agent.zip agent -x 'agent/installer.iss' 'agent/make_icon.py'
           sed -i "s/^SCRIPT_VERSION=.*/SCRIPT_VERSION=\"$VERSION\"/" sweetspot_install.sh
           cat > notes.md <<EOF
@@ -97,11 +115,13 @@ jobs:
           **Agent za Windows:** pokrenite \`SweetSpot-Agent-Setup-${VERSION}.exe\`, zatim desni klik na ikonu pored sata → Postavke.
 
           **Agent za Linux/macOS:** raspakirajte \`sweetspot-agent.zip\` i slijedite upute u README-u.
+
+          ${android_note}
           EOF
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release edit "$tag" --notes-file notes.md
-            gh release upload "$tag" sweetspot_install.sh sweetspot-agent.zip "dist/SweetSpot-Agent-Setup-$VERSION.exe" --clobber
+            gh release upload "$tag" "${assets[@]}" --clobber
           else
-            gh release create "$tag" sweetspot_install.sh sweetspot-agent.zip "dist/SweetSpot-Agent-Setup-$VERSION.exe" --target "$GITHUB_SHA" \
+            gh release create "$tag" "${assets[@]}" --target "$GITHUB_SHA" \
               --title "SweetSpot $tag" --notes-file notes.md
           fi
