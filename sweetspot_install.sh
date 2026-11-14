@@ -19,8 +19,8 @@ export LANG=C.UTF-8 LC_ALL=C.UTF-8          # bez upozorenja o jeziku u novom ko
 SCRIPT_VERSION="dev"                         # pri izdanju se upisuje broj verzije
 RELEASES_URL="https://github.com/moordrak/SweetSpot/releases"
 
-VERSION="${VERSION:-latest}"                 # oznaka Docker slike, npr. 1.0.0
-IMAGE="${IMAGE:-ghcr.io/moordrak/sweetspot:${VERSION}}"
+SWEETSPOT_VERSION="${SWEETSPOT_VERSION:-latest}"  # oznaka Docker slike, npr. 1.0.0
+IMAGE="${IMAGE:-ghcr.io/moordrak/sweetspot:${SWEETSPOT_VERSION}}"
 REPO_URL="https://github.com/moordrak/SweetSpot.git"
 PORT="${PORT:-8085}"                         # port web sučelja
 API_TOKEN="${API_TOKEN:-}"                   # prazno = generira se nasumično
@@ -72,7 +72,7 @@ install_local() {
     if ! { apt-get update -qq \
            && apt-get install -y -qq curl ca-certificates \
            && curl -fsSL https://get.docker.com -o /tmp/get-docker.sh \
-           && sh /tmp/get-docker.sh; } >"$log" 2>&1; then
+           && env -u VERSION sh /tmp/get-docker.sh; } >"$log" 2>&1; then
       tail -n 30 "$log" >&2
       fail "Instalacija Dockera nije uspjela. Cijeli zapis: $log"
     fi
@@ -122,7 +122,7 @@ EOF
   if ! (cd "$INSTALL_DIR" && "${COMPOSE[@]}" pull -q); then
     info "Slika nije dostupna, gradim je iz izvornog koda..."
     local ref="main"
-    [ "$VERSION" = "latest" ] || ref="v${VERSION#v}"
+    [ "$SWEETSPOT_VERSION" = "latest" ] || ref="v${SWEETSPOT_VERSION#v}"
     if ! command -v git >/dev/null 2>&1 && command -v apt-get >/dev/null 2>&1; then
       apt-get update -qq && apt-get install -y -qq git >/dev/null
     fi
@@ -306,7 +306,7 @@ install_proxmox() {
 
   info "Instaliram SweetSpot u kontejneru..."
   pct push "$CTID" "$SELF" /root/sweetspot_install.sh
-  pct exec "$CTID" -- env LANG=C.UTF-8 LC_ALL=C.UTF-8 PORT="$PORT" API_TOKEN="$API_TOKEN" VERSION="$VERSION" IMAGE="$IMAGE" \
+  pct exec "$CTID" -- env LANG=C.UTF-8 LC_ALL=C.UTF-8 PORT="$PORT" API_TOKEN="$API_TOKEN" SWEETSPOT_VERSION="$SWEETSPOT_VERSION" IMAGE="$IMAGE" \
     bash /root/sweetspot_install.sh --local
 
   cat <<EOF
