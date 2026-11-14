@@ -14,6 +14,7 @@
 #   CTID=150 STORAGE=local-zfs IP=192.168.1.60/24 GW=192.168.1.1 PORT=8085 bash sweetspot_install.sh
 set -euo pipefail
 export PATH="$PATH:/usr/sbin:/sbin"          # pct i srodni alati kad je root dobiven sa "su"
+export LANG=C.UTF-8 LC_ALL=C.UTF-8          # bez upozorenja o jeziku u novom kontejneru
 
 SCRIPT_VERSION="dev"                         # pri izdanju se upisuje broj verzije
 RELEASES_URL="https://github.com/moordrak/SweetSpot/releases"
@@ -65,11 +66,17 @@ info "SweetSpot instalacija, verzija skripte: $SCRIPT_VERSION"
 # ---------------------------------------------------------------------------
 install_local() {
   if ! command -v docker >/dev/null 2>&1; then
-    info "Instaliram Docker..."
+    local log=/var/log/sweetspot-docker-install.log
+    info "Instaliram Docker (može potrajati nekoliko minuta)..."
     export DEBIAN_FRONTEND=noninteractive
-    apt-get update -qq
-    apt-get install -y -qq curl ca-certificates >/dev/null
-    curl -fsSL https://get.docker.com | sh >/dev/null
+    if ! { apt-get update -qq \
+           && apt-get install -y -qq curl ca-certificates \
+           && curl -fsSL https://get.docker.com -o /tmp/get-docker.sh \
+           && sh /tmp/get-docker.sh; } >"$log" 2>&1; then
+      tail -n 30 "$log" >&2
+      fail "Instalacija Dockera nije uspjela. Cijeli zapis: $log"
+    fi
+    rm -f /tmp/get-docker.sh
   fi
   if docker compose version >/dev/null 2>&1; then
     COMPOSE=(docker compose)
@@ -299,7 +306,7 @@ install_proxmox() {
 
   info "Instaliram SweetSpot u kontejneru..."
   pct push "$CTID" "$SELF" /root/sweetspot_install.sh
-  pct exec "$CTID" -- env PORT="$PORT" API_TOKEN="$API_TOKEN" VERSION="$VERSION" IMAGE="$IMAGE" \
+  pct exec "$CTID" -- env LANG=C.UTF-8 LC_ALL=C.UTF-8 PORT="$PORT" API_TOKEN="$API_TOKEN" VERSION="$VERSION" IMAGE="$IMAGE" \
     bash /root/sweetspot_install.sh --local
 
   cat <<EOF
