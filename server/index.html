@@ -155,6 +155,14 @@
                    background: var(--sw-line); }
   .toggle { display: flex; flex-direction: row; align-items: center; gap: 8px; font-size: 14px; color: var(--text-primary); }
   .toggle input { width: 18px; height: 18px; }
+  #gd-setup input { width: 100%; }
+  .gd-box { border: 1px dashed var(--grid); border-radius: 9px; padding: 12px; }
+  .gd-code { font: 700 28px/1.2 "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace; letter-spacing: .12em;
+             color: var(--series-1); user-select: all; }
+  #gd-list { margin-top: 10px; border-top: 1px solid var(--grid); }
+  .gd-item { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--grid); font-size: 14px; }
+  .gd-item span { flex: 1; min-width: 0; }
+  .gd-item button { padding: 2px 10px; font-size: 13px; }
   .token-row { display: flex; gap: 8px; flex-wrap: wrap; }
   .token-row input { flex: 1 1 220px; min-width: 0; font-family: "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace;
                      font-size: 14px; letter-spacing: .02em; }
@@ -309,6 +317,49 @@
         </div>
         <p class="hint" id="token-status" role="status" style="margin-top:6px"></p>
         <p class="hint">Adresa poslužitelja: <strong id="server-url"></strong></p>
+      </fieldset>
+
+      <fieldset id="gd">
+        <legend>Kopija na Google Drive</legend>
+        <p class="hint">Jednom dnevno sprema kopiju baze u mapu „SweetSpot“ na vašem Google Driveu. SweetSpot vidi samo datoteke koje je sam napravio.</p>
+
+        <div id="gd-setup" hidden>
+          <p class="hint">Prvo upišite podatke Google klijenta (vrsta „TVs and Limited Input devices“). Upute su u README-u, odjeljak „Kopija na Google Drive“.</p>
+          <div class="range-row">
+            <label style="flex:1 1 260px">Client ID <input id="gd-client-id" autocomplete="off" spellcheck="false" placeholder="…apps.googleusercontent.com"></label>
+            <label style="flex:1 1 180px">Client secret <input id="gd-client-secret" type="password" autocomplete="off" spellcheck="false"></label>
+            <button type="button" id="gd-save-client">Spremi</button>
+          </div>
+        </div>
+
+        <div id="gd-connect" hidden>
+          <button type="button" class="primary" id="gd-connect-btn">Poveži Google Drive</button>
+          <p class="hint" style="margin-top:8px" id="gd-client-info"></p>
+        </div>
+
+        <div id="gd-pending" class="gd-box" hidden>
+          <p style="margin:0 0 6px">Na telefonu ili računalu otvorite <a id="gd-url" target="_blank" rel="noopener"></a> i upišite kod:</p>
+          <div class="gd-code" id="gd-code" aria-live="polite"></div>
+          <p class="hint" id="gd-wait" style="margin:6px 0 8px">Čekam potvrdu…</p>
+          <button type="button" id="gd-cancel">Odustani</button>
+        </div>
+
+        <div id="gd-connected" hidden>
+          <p style="margin:0 0 6px">Povezano: <strong id="gd-email"></strong></p>
+          <p class="hint" id="gd-last" style="margin:0 0 8px"></p>
+          <div class="range-row" style="align-items:center">
+            <label class="toggle"><input type="checkbox" id="gd-enabled"> Dnevna automatska kopija</label>
+            <label style="display:flex;flex-direction:row;align-items:center;gap:6px">Čuvaj <input id="gd-keep" type="number" min="1" max="365" style="width:72px"> kopija</label>
+          </div>
+          <div class="range-row" style="margin-top:10px">
+            <button type="button" class="primary" id="gd-run">Napravi kopiju sada</button>
+            <button type="button" id="gd-list-btn">Prikaži kopije</button>
+            <button type="button" id="gd-disconnect">Odspoji</button>
+          </div>
+          <div id="gd-list" hidden></div>
+        </div>
+        <p class="error" id="gd-error" role="alert"></p>
+        <p class="hint" id="gd-message" role="status"></p>
       </fieldset>
 
       <fieldset>
@@ -725,6 +776,8 @@ function openSettings() {
   showToken(false);
   $("server-url").textContent = location.origin;
   loadToken();
+  $("gd-error").textContent = ""; $("gd-message").textContent = ""; $("gd-list").hidden = true;
+  gdRefresh();
   dlg.showModal();
 }
 
@@ -786,10 +839,128 @@ $("token-copy").addEventListener("click", async () => {
   $("token-status").textContent = ok ? "Token je kopiran." : "Kopiranje nije uspjelo – kliknite Prikaži i kopirajte ga ručno.";
 });
 
+/* ---------- kopija na Google Drive ---------- */
+let gdTimer = null, gdState = null;
+const fmtStamp = s => {
+  if (!s) return "";
+  const d = new Date(s);
+  return `${fmtDate(d)} ${fmtTime(d)}`;
+};
+const fmtSize = n => n > 1048576 ? `${(n / 1048576).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(n / 1024))} kB`;
+
+async function gdCall(method, path, body) {
+  $("gd-error").textContent = "";
+  const res = await fetch(path, {method, headers: body ? {"Content-Type": "application/json"} : {},
+                                 body: body ? JSON.stringify(body) : undefined});
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Greška ${res.status}`);
+  return data;
+}
+
+function gdShow(st) {
+  gdState = st;
+  const pending = st.pending;
+  $("gd-setup").hidden = st.configured || st.client_from_env;
+  $("gd-connect").hidden = !st.configured || st.connected || !!pending;
+  $("gd-pending").hidden = !pending || st.connected;
+  $("gd-connected").hidden = !st.connected;
+  $("gd-client-info").textContent = st.configured
+    ? `Google klijent: ${st.client_id.split("-")[0]}…${st.client_from_env ? " (iz varijabli okoline)" : ""}` : "";
+  if (pending && !st.connected) {
+    $("gd-code").textContent = pending.user_code;
+    $("gd-url").textContent = pending.verification_url.replace(/^https?:\/\//, "");
+    $("gd-url").href = pending.verification_url;
+    $("gd-wait").textContent = pending.error || `Čekam potvrdu… (kod vrijedi još ${Math.ceil(pending.expires_in / 60)} min)`;
+  }
+  if (st.connected) {
+    $("gd-email").textContent = st.email || "Google račun";
+    $("gd-enabled").checked = st.enabled;
+    if (document.activeElement !== $("gd-keep")) $("gd-keep").value = st.keep;
+    const parts = [];
+    if (st.running) parts.push("Kopija se upravo radi…");
+    else if (st.last_backup) parts.push(`Zadnja kopija: ${fmtStamp(st.last_backup)}${st.last_count != null ? ` (${st.last_count} očitanja)` : ""}`);
+    else parts.push(st.last_error ? "Još nema kopije." : "Radim prvu kopiju…");
+    if (st.enabled && st.next_backup && !st.running) parts.push(`sljedeća: ${fmtStamp(st.next_backup)}`);
+    $("gd-last").textContent = parts.join(" · ");
+    $("gd-run").disabled = st.running;
+  }
+  $("gd-error").textContent = st.last_error && !$("gd-error").textContent ? st.last_error : $("gd-error").textContent;
+  // dok se čeka prijava ili radi kopija, stanje se osvježava
+  clearTimeout(gdTimer);
+  const firstBackup = st.connected && !st.last_backup && !st.last_error;     // prva kopija nakon povezivanja
+  if (dlg.open && ((pending && !pending.error && !st.connected) || st.running || firstBackup))
+    gdTimer = setTimeout(gdRefresh, 3000);
+}
+
+async function gdRefresh() {
+  try { gdShow(await gdCall("GET", "/api/backup")); }
+  catch (e) { $("gd-error").textContent = e.message; }
+}
+
+$("gd-save-client").addEventListener("click", async () => {
+  try {
+    gdShow(await gdCall("PUT", "/api/backup/config", {client_id: $("gd-client-id").value, client_secret: $("gd-client-secret").value}));
+    $("gd-client-secret").value = "";
+  } catch (e) { $("gd-error").textContent = e.message; }
+});
+$("gd-connect-btn").addEventListener("click", async () => {
+  try { await gdCall("POST", "/api/backup/connect"); gdRefresh(); }
+  catch (e) { $("gd-error").textContent = e.message; }
+});
+$("gd-cancel").addEventListener("click", async () => {
+  try { gdShow(await gdCall("POST", "/api/backup/cancel")); } catch (e) { $("gd-error").textContent = e.message; }
+});
+$("gd-disconnect").addEventListener("click", async () => {
+  if (!confirm("Odspojiti Google Drive? Postojeće kopije ostaju na Driveu, ali se nove više neće raditi.")) return;
+  try { gdShow(await gdCall("POST", "/api/backup/disconnect")); $("gd-list").hidden = true; } catch (e) { $("gd-error").textContent = e.message; }
+});
+$("gd-enabled").addEventListener("change", async e => {
+  try { gdShow(await gdCall("PUT", "/api/backup/settings", {enabled: e.target.checked})); } catch (err) { $("gd-error").textContent = err.message; }
+});
+$("gd-keep").addEventListener("change", async e => {
+  const keep = Math.round(Number(e.target.value));
+  if (!(keep >= 1 && keep <= 365)) { $("gd-error").textContent = "Broj kopija mora biti između 1 i 365."; return; }
+  try { gdShow(await gdCall("PUT", "/api/backup/settings", {keep})); } catch (err) { $("gd-error").textContent = err.message; }
+});
+$("gd-run").addEventListener("click", async () => {
+  $("gd-run").disabled = true; $("gd-message").textContent = "Radim kopiju…";
+  try {
+    const st = await gdCall("POST", "/api/backup/run");
+    $("gd-message").textContent = `Kopija je spremljena (${fmtSize(st.backup.size)}, ${st.backup.count} očitanja).`;
+    gdShow(st);
+    if (!$("gd-list").hidden) gdList();
+  } catch (e) { $("gd-message").textContent = ""; $("gd-error").textContent = e.message; gdRefresh(); }
+});
+async function gdList() {
+  const box = $("gd-list");
+  box.hidden = false; box.innerHTML = `<p class="hint">Učitavam…</p>`;
+  try {
+    const {files} = await gdCall("GET", "/api/backup/list");
+    box.innerHTML = files.length ? files.map(f => `<div class="gd-item"><span>${fmtStamp(f.createdTime)} · ${fmtSize(Number(f.size || 0))}<br>
+        <small class="muted">${esc(f.description || f.name)}</small></span>
+        <button type="button" data-restore="${esc(f.id)}" data-when="${esc(fmtStamp(f.createdTime))}">Vrati</button></div>`).join("")
+      : `<p class="hint">Na Driveu još nema kopija.</p>`;
+  } catch (e) { box.innerHTML = ""; $("gd-error").textContent = e.message; }
+}
+$("gd-list-btn").addEventListener("click", () => $("gd-list").hidden ? gdList() : ($("gd-list").hidden = true));
+$("gd-list").addEventListener("click", async e => {
+  const b = e.target.closest("button[data-restore]");
+  if (!b) return;
+  if (!confirm(`Vratiti bazu iz kopije od ${b.dataset.when}?\n\nSva trenutna očitanja zamijenit će se onima iz kopije. ` +
+               "Prije vraćanja trenutna baza sprema se kao lokalna kopija na poslužitelju.")) return;
+  b.disabled = true; $("gd-message").textContent = "Vraćam kopiju…";
+  try {
+    const {restored} = await gdCall("POST", "/api/backup/restore", {id: b.dataset.restore});
+    $("gd-message").textContent = `Vraćeno ${restored.count} očitanja. Prethodno stanje spremljeno je kao ${restored.safety}.`;
+    await loadSettings(); await load();
+  } catch (err) { $("gd-message").textContent = ""; $("gd-error").textContent = err.message; b.disabled = false; }
+});
+
 function closeSettings(keep) {
   if (!keep && lookBefore) { Object.assign(look, lookBefore); applyLook(); }
   lookBefore = null;
   showToken(false);
+  clearTimeout(gdTimer);
   dlg.close();
 }
 

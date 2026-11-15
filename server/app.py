@@ -13,6 +13,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from backup import DriveError, GoogleDriveBackup
+
 API_TOKEN = os.environ.get("API_TOKEN", "")
 DB_PATH = os.environ.get("DB_PATH", "/data/sweetspot.db")
 PORT = int(os.environ.get("PORT", "8080"))
@@ -20,6 +22,7 @@ APP_VERSION = os.environ.get("APP_VERSION", "").strip() or "dev"
 INDEX_HTML = (Path(__file__).parent / "index.html").read_bytes()
 # Zadane postavke; spremljene vrijednosti iz baze ih nadjačavaju
 DEFAULT_SETTINGS = {"low": 3.9, "high": 10.0}
+DRIVE = GoogleDriveBackup(DB_PATH)
 TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
@@ -127,6 +130,13 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/token":
             # Token je i lozinka za web sučelje; prikazuje se u postavkama radi upisa u agente.
             return self.send(200, {"token": API_TOKEN})
+        if url.path == "/api/backup":
+            return self.send(200, DRIVE.status())
+        if url.path == "/api/backup/list":
+            try:
+                return self.send(200, {"files": DRIVE.list()})
+            except DriveError as exc:
+                return self.send(502, {"error": str(exc)})
         if url.path == "/api/settings":
             db = open_db()
             try:
@@ -153,10 +163,36 @@ class Handler(BaseHTTPRequestHandler):
                              [("Content-Disposition", 'attachment; filename="sweetspot.csv"')])
         self.send(404, {"error": "Nije pronađeno."})
 
+    def backup_action(self, path):
+        """POST /api/backup/... : povezivanje, kopija, vraćanje."""
+        try:
+            if path == "/api/backup/connect":
+                return self.send(200, {"pending": DRIVE.start_auth()})
+            if path == "/api/backup/cancel":
+                DRIVE.cancel_auth()
+            elif path == "/api/backup/disconnect":
+                DRIVE.disconnect()
+            elif path == "/api/backup/run":
+                return self.send(200, {"backup": DRIVE.run(), **DRIVE.status()})
+            elif path == "/api/backup/restore":
+                payload = self.read_json()
+                result = DRIVE.restore(payload.get("id") if isinstance(payload, dict) else None)
+                return self.send(200, {"restored": result})
+            else:
+                return self.send(404, {"error": "Nije pronađeno."})
+        except DriveError as exc:
+            return self.send(502, {"error": str(exc)})
+        except (TypeError, ValueError) as exc:
+            return self.send(400, {"error": f"Neispravan zahtjev: {exc}"})
+        return self.send(200, DRIVE.status())
+
     def do_POST(self):
         if not self.authorized():
             return
-        if urlparse(self.path).path != "/api/readings":
+        path = urlparse(self.path).path
+        if path.startswith("/api/backup/"):
+            return self.backup_action(path)
+        if path != "/api/readings":
             return self.send(404, {"error": "Nije pronađeno."})
         try:
             payload = self.read_json()
@@ -180,7 +216,22 @@ class Handler(BaseHTTPRequestHandler):
     def do_PUT(self):
         if not self.authorized():
             return
-        if urlparse(self.path).path != "/api/settings":
+        path = urlparse(self.path).path
+        if path in ("/api/backup/config", "/api/backup/settings"):
+            try:
+                payload = self.read_json()
+                if not isinstance(payload, dict):
+                    raise ValueError("očekuje se JSON objekt")
+                if path == "/api/backup/config":
+                    if DRIVE.client()[2]:
+                        raise ValueError("podaci klijenta zadani su varijablama okoline")
+                    DRIVE.set_client(payload.get("client_id"), payload.get("client_secret"))
+                else:
+                    DRIVE.update(payload)
+            except (TypeError, ValueError) as exc:
+                return self.send(400, {"error": f"Neispravne postavke: {exc}"})
+            return self.send(200, DRIVE.status())
+        if path != "/api/settings":
             return self.send(404, {"error": "Nije pronađeno."})
         try:
             settings = clean_settings(self.read_json())
@@ -258,5 +309,6 @@ if __name__ == "__main__":
         sys.exit("Postavite API_TOKEN (najmanje 8 znakova) u datoteci .env.")
     migrate_old_db()
     open_db().close()
+    DRIVE.start_scheduler()
     print(f"SweetSpot {APP_VERSION} sluša na portu {PORT}", flush=True)
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()

@@ -32,6 +32,7 @@ Verzija programa vidi se u podnožju stranice i u postavkama.
 
 - **ciljni raspon** – donja i gornja granica u mmol/L; sprema se na poslužitelj i vrijedi na svim uređajima
 - **token za agente** – prikaz i kopiranje tokena koji se upisuje u Windows i Android agenta
+- **kopija na Google Drive** – dnevna kopija baze na vaš Google Drive, s popisom kopija i vraćanjem (vidi dolje)
 - **tema** i **animirana pozadina** (valovi, mjehurići, kiša znakova ili bez animacije)
 - **stilizirana slika u pozadini** – kap, molekula glukoze i krivulja s ciljnim pojasom
 - **prozirnost kartica** – klizač od 0 do 70 %, koliko se pozadina vidi kroz kartice
@@ -119,6 +120,39 @@ lozinka je `API_TOKEN`. Baza je u mapi `./data` – nju uključite u backup.
 
 Aplikacija sama ne radi HTTPS. Izvan kućne mreže izlažite je samo preko reverse proxyja s TLS-om
 (dovoljan je običan `proxy_pass http://IP:8085;`).
+
+## Kopija na Google Drive
+
+SweetSpot može jednom dnevno spremiti kopiju baze u mapu **SweetSpot** na vašem Google Driveu. Traži samo dozvolu
+`drive.file`: vidi isključivo datoteke koje je sam napravio, a ne ostatak Drivea. Kopije su sažete SQLite baze
+(`sweetspot-GGGG-MM-DD_HHMMSSZ.db.gz`, vrijeme u UTC-u); čuva se zadanih 30 zadnjih, a broj se mijenja u postavkama.
+
+Prijava ide kodom, kao na pametnom televizoru, pa radi i kad je SweetSpot dostupan samo u kućnoj mreži.
+
+### 1. Google klijent (jednom)
+
+1. Otvorite [Google Cloud Console](https://console.cloud.google.com/) i napravite projekt, npr. „SweetSpot“.
+2. **APIs & Services → Library**: potražite **Google Drive API** i uključite ga (**Enable**).
+3. **Google Auth Platform → Branding**: naziv aplikacije „SweetSpot“ i vaša e-pošta. Pod **Audience** odaberite **External**.
+4. **Data access → Add or remove scopes**: dodajte `https://www.googleapis.com/auth/drive.file`.
+5. **Audience → Publish app**, da status bude **In production**. Dok je aplikacija u stanju *Testing*, Google
+   poništava prijavu nakon 7 dana i kopije prestaju.
+6. **Clients → Create client**, vrsta **TVs and Limited Input devices**. Zapišite **Client ID** i **Client secret**.
+
+### 2. Povezivanje
+
+U web sučelju otvorite **Postavke → Kopija na Google Drive**, upišite Client ID i Client secret pa kliknite
+**Poveži Google Drive**. Pojavit će se kod: na telefonu ili računalu otvorite `google.com/device`, upišite ga i
+dopustite pristup. Ako Google upozori da aplikacija nije provjerena, odaberite **Napredno → Idi na SweetSpot**
+(to je vaša vlastita aplikacija). Prva kopija napravi se odmah nakon povezivanja.
+
+Client ID i secret mogu se zadati i u datoteci `.env` (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`); tada ih
+sučelje ne traži.
+
+### Vraćanje
+
+**Prikaži kopije → Vrati** zamjenjuje sva trenutna očitanja onima iz kopije. Prije toga trenutna baza se sprema
+u mapu `data` kao `sweetspot-prije-vracanja-….db`, pa se vraćanje može poništiti.
 
 ## 2. Agent na PC-u
 
@@ -221,6 +255,8 @@ Poslužitelj odbacuje duplikate. Ako poslužitelj nije dostupan, očitanja se č
 | DELETE | `/api/readings/<id>` | brisanje |
 | GET | `/api/export.csv` | izvoz |
 | GET | `/api/token` | token za agente (samo uz prijavu) |
+| GET | `/api/backup` | stanje kopije na Google Drive |
+| POST | `/api/backup/run` | napravi kopiju sada |
 | GET | `/api/settings` | postavke (`low`, `high`) i verzija programa |
 | PUT | `/api/settings` | `{"low":3.9,"high":10.0}` – novi ciljni raspon |
 | GET | `/api/health` | provjera rada (bez prijave) |

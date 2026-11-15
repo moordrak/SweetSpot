@@ -99,6 +99,8 @@ services:
       - "${PORT}:8080"
     environment:
       API_TOKEN: \${API_TOKEN:?Postavite API_TOKEN u datoteci .env}
+      GOOGLE_CLIENT_ID: \${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: \${GOOGLE_CLIENT_SECRET:-}
     volumes:
       - ./data:/data
     healthcheck:

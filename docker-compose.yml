@@ -9,6 +9,9 @@ services:
       - "8085:8080"
     environment:
       API_TOKEN: ${API_TOKEN:?Postavite API_TOKEN u datoteci .env}
+      # Neobavezno: Google klijent za kopiju na Google Drive (može se upisati i u postavkama web sučelja)
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
     volumes:
       - ./data:/data
     healthcheck:
