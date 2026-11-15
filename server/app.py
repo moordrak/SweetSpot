@@ -132,6 +132,12 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, {"token": API_TOKEN})
         if url.path == "/api/backup":
             return self.send(200, DRIVE.status())
+        if url.path == "/api/backup/download":
+            # ručna kopija na računalo: ista sažeta kopija baze kao na Google Driveu
+            data, count = DRIVE.snapshot()
+            name = f"sweetspot-{datetime.now():%Y-%m-%d_%H%M}.db.gz"
+            return self.send(200, data, "application/gzip", [
+                ("Content-Disposition", f'attachment; filename="{name}"'), ("X-Readings", str(count))])
         if url.path == "/api/backup/list":
             try:
                 return self.send(200, {"files": DRIVE.list()})
@@ -174,6 +180,11 @@ class Handler(BaseHTTPRequestHandler):
                 DRIVE.disconnect()
             elif path == "/api/backup/run":
                 return self.send(200, {"backup": DRIVE.run(), **DRIVE.status()})
+            elif path == "/api/backup/upload":
+                length = int(self.headers.get("Content-Length") or 0)
+                if not 0 < length <= 200_000_000:
+                    raise ValueError("datoteka je prazna ili prevelika")
+                return self.send(200, {"restored": DRIVE.restore_upload(self.rfile.read(length))})
             elif path == "/api/backup/restore":
                 payload = self.read_json()
                 result = DRIVE.restore(payload.get("id") if isinstance(payload, dict) else None)

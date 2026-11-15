@@ -291,7 +291,7 @@ class GoogleDriveBackup:
         self._set(folder_id=created["id"])
         return created["id"]
 
-    def _snapshot(self):
+    def snapshot(self):
         """Dosljedna kopija baze (SQLite backup), sažeta gzipom. Vraća (bajtovi, broj očitanja)."""
         with tempfile.TemporaryDirectory() as tmp:
             target = os.path.join(tmp, "kopija.db")
@@ -323,7 +323,7 @@ class GoogleDriveBackup:
         self.running = True
         try:
             self._set(last_attempt=stamp())
-            data, count = self._snapshot()
+            data, count = self.snapshot()
             folder = self._folder()
             name = f"{PREFIX}{now_utc():%Y-%m-%d_%H%M%S}Z{SUFFIX}"
             boundary = "sweetspot-" + uuid.uuid4().hex
@@ -370,45 +370,64 @@ class GoogleDriveBackup:
             if not meta.get("name", "").startswith(PREFIX) or meta.get("trashed"):
                 raise DriveError("Datoteka nije SweetSpot kopija.")
             raw = self._api("GET", f"/drive/v3/files/{file_id}", query={"alt": "media"}, raw=True)
+            result = self._restore_bytes(raw)
+            return {**result, "name": meta.get("name")}
+        finally:
+            self.lock.release()
+
+    def restore_upload(self, raw):
+        """Vraća bazu iz datoteke poslane s računala (.db.gz ili .db)."""
+        if not self.lock.acquire(timeout=5):
+            raise DriveError("Kopija se upravo radi; pokušajte za trenutak.")
+        try:
+            return self._restore_bytes(raw)
+        finally:
+            self.lock.release()
+
+    def _restore_bytes(self, raw):
+        """Provjerava kopiju i zamjenjuje njome bazu; trenutna se prije toga sprema pored nje."""
+        if raw[:2] == b"\x1f\x8b":
             try:
                 data = gzip.decompress(raw)
             except OSError:
-                raise DriveError("Kopija je oštećena (nije gzip).") from None
-            with tempfile.TemporaryDirectory() as tmp:
-                incoming = os.path.join(tmp, "vracanje.db")
-                Path(incoming).write_bytes(data)
-                src = sqlite3.connect(incoming)
+                raise DriveError("Kopija je oštećena (gzip se ne može raspakirati).") from None
+        else:
+            data = raw
+        if not data.startswith(b"SQLite format 3\x00"):
+            raise DriveError("Datoteka nije SweetSpot kopija baze (.db.gz ili .db).")
+        with tempfile.TemporaryDirectory() as tmp:
+            incoming = os.path.join(tmp, "vracanje.db")
+            Path(incoming).write_bytes(data)
+            src = sqlite3.connect(incoming)
+            try:
+                count = src.execute("SELECT COUNT(*) FROM ocitanja").fetchone()[0]
+                healthy = src.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+            except sqlite3.DatabaseError:
+                src.close()
+                raise DriveError("Kopija nije ispravna SweetSpot baza.") from None
+            if not healthy:
+                src.close()
+                raise DriveError("Kopija je oštećena.")
+            # lokalna sigurnosna kopija trenutnog stanja
+            safety = Path(self.db_path).with_name(f"sweetspot-prije-vracanja-{datetime.now():%Y%m%d-%H%M%S}.db")
+            current = sqlite3.connect(self.db_path, timeout=30)
+            try:
+                out = sqlite3.connect(safety)
                 try:
-                    count = src.execute("SELECT COUNT(*) FROM ocitanja").fetchone()[0]
-                    healthy = src.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
-                except sqlite3.DatabaseError:
-                    src.close()
-                    raise DriveError("Kopija nije ispravna SweetSpot baza.") from None
-                if not healthy:
-                    src.close()
-                    raise DriveError("Kopija je oštećena.")
-                # lokalna sigurnosna kopija trenutnog stanja
-                safety = Path(self.db_path).with_name(f"sweetspot-prije-vracanja-{datetime.now():%Y%m%d-%H%M%S}.db")
-                current = sqlite3.connect(self.db_path, timeout=30)
-                try:
-                    out = sqlite3.connect(safety)
-                    try:
-                        current.backup(out)
-                    finally:
-                        out.close()
-                    # podaci za Google ostaju trenutni, ne oni iz kopije
-                    keep = current.execute("SELECT kljuc, vrijednost FROM postavke WHERE kljuc LIKE 'gd\\_%' ESCAPE '\\'").fetchall()
-                    src.backup(current)
-                    current.execute("CREATE TABLE IF NOT EXISTS postavke (kljuc TEXT PRIMARY KEY, vrijednost TEXT NOT NULL)")
-                    current.execute("DELETE FROM postavke WHERE kljuc LIKE 'gd\\_%' ESCAPE '\\'")
-                    current.executemany("INSERT OR REPLACE INTO postavke (kljuc, vrijednost) VALUES (?, ?)", keep)
-                    current.commit()
+                    current.backup(out)
                 finally:
-                    src.close()
-                    current.close()
-            return {"count": count, "safety": safety.name, "name": meta.get("name")}
-        finally:
-            self.lock.release()
+                    out.close()
+                # podaci za Google ostaju trenutni, ne oni iz kopije
+                keep = current.execute("SELECT kljuc, vrijednost FROM postavke WHERE kljuc LIKE 'gd\\_%' ESCAPE '\\'").fetchall()
+                src.backup(current)
+                current.execute("CREATE TABLE IF NOT EXISTS postavke (kljuc TEXT PRIMARY KEY, vrijednost TEXT NOT NULL)")
+                current.execute("DELETE FROM postavke WHERE kljuc LIKE 'gd\\_%' ESCAPE '\\'")
+                current.executemany("INSERT OR REPLACE INTO postavke (kljuc, vrijednost) VALUES (?, ?)", keep)
+                current.commit()
+            finally:
+                src.close()
+                current.close()
+        return {"count": count, "safety": safety.name}
 
     def update(self, payload):
         if not isinstance(payload, dict):

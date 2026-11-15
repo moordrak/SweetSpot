@@ -32,6 +32,7 @@ Verzija programa vidi se u podnožju stranice i u postavkama.
 
 - **ciljni raspon** – donja i gornja granica u mmol/L; sprema se na poslužitelj i vrijedi na svim uređajima
 - **token za agente** – prikaz i kopiranje tokena koji se upisuje u Windows i Android agenta
+- **kopija baze** – preuzimanje kopije na računalo (`sweetspot-….db.gz`) i vraćanje baze iz takve datoteke
 - **kopija na Google Drive** – dnevna kopija baze na vaš Google Drive, s popisom kopija i vraćanjem (vidi dolje)
 - **tema** i **animirana pozadina** (valovi, mjehurići, kiša znakova ili bez animacije)
 - **stilizirana slika u pozadini** – kap, molekula glukoze i krivulja s ciljnim pojasom
@@ -258,6 +259,8 @@ Poslužitelj odbacuje duplikate. Ako poslužitelj nije dostupan, očitanja se č
 | GET | `/api/export.csv` | izvoz |
 | GET | `/api/token` | token za agente (samo uz prijavu) |
 | GET | `/api/backup` | stanje kopije na Google Drive |
+| GET | `/api/backup/download` | kopija baze za preuzimanje (`.db.gz`) |
+| POST | `/api/backup/upload` | vraćanje baze iz poslane kopije (`.db.gz` ili `.db`) |
 | POST | `/api/backup/run` | napravi kopiju sada |
 | GET | `/api/settings` | postavke (`low`, `high`) i verzija programa |
 | PUT | `/api/settings` | `{"low":3.9,"high":10.0}` – novi ciljni raspon |

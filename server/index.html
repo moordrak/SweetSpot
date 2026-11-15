@@ -319,6 +319,19 @@
         <p class="hint">Adresa poslužitelja: <strong id="server-url"></strong></p>
       </fieldset>
 
+      <fieldset>
+        <legend>Kopija baze</legend>
+        <p class="hint">Preuzmite kopiju svih očitanja i postavki na ovo računalo ili vratite bazu iz ranije spremljene kopije.</p>
+        <div class="range-row">
+          <a class="button" id="local-download" href="/api/backup/download" download>Preuzmi kopiju</a>
+          <button type="button" id="local-restore">Vrati iz datoteke…</button>
+          <input type="file" id="local-file" accept=".gz,.db,application/gzip" hidden>
+        </div>
+        <p class="hint" style="margin-top:6px">Vraćanje zamjenjuje sva trenutna očitanja onima iz kopije. Trenutna baza prije toga se sprema na poslužitelju (mapa <code>data</code>).</p>
+        <p class="error" id="local-error" role="alert"></p>
+        <p class="hint" id="local-message" role="status"></p>
+      </fieldset>
+
       <fieldset id="gd">
         <legend>Kopija na Google Drive</legend>
         <p class="hint">Jednom dnevno sprema kopiju baze u mapu „SweetSpot“ na vašem Google Driveu. SweetSpot vidi samo datoteke koje je sam napravio.</p>
@@ -777,6 +790,7 @@ function openSettings() {
   $("server-url").textContent = location.origin;
   loadToken();
   $("gd-error").textContent = ""; $("gd-message").textContent = ""; $("gd-list").hidden = true;
+  $("local-error").textContent = ""; $("local-message").textContent = "";
   gdRefresh();
   dlg.showModal();
 }
@@ -837,6 +851,34 @@ $("token-copy").addEventListener("click", async () => {
     field.type = type; field.blur();
   }
   $("token-status").textContent = ok ? "Token je kopiran." : "Kopiranje nije uspjelo – kliknite Prikaži i kopirajte ga ručno.";
+});
+
+/* ---------- kopija na ovom računalu ---------- */
+$("local-download").addEventListener("click", () => {
+  $("local-error").textContent = "";
+  $("local-message").textContent = "Preuzimanje je počelo – datoteka se sprema u mapu za preuzimanja.";
+});
+$("local-restore").addEventListener("click", () => { $("local-file").value = ""; $("local-file").click(); });
+$("local-file").addEventListener("change", async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  $("local-error").textContent = ""; $("local-message").textContent = "";
+  if (!/\.(db\.gz|gz|db)$/i.test(file.name)) { $("local-error").textContent = "Odaberite SweetSpot kopiju (.db.gz ili .db)."; return; }
+  if (!confirm(`Vratiti bazu iz datoteke „${file.name}“?\n\nSva trenutna očitanja zamijenit će se onima iz kopije. ` +
+               "Trenutna baza prije toga se sprema na poslužitelju.")) return;
+  $("local-restore").disabled = true; $("local-message").textContent = "Vraćam kopiju…";
+  try {
+    const res = await fetch("/api/backup/upload", {method: "POST", headers: {"Content-Type": "application/octet-stream"}, body: file});
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || `Greška ${res.status}`);
+    $("local-message").textContent = `Vraćeno ${body.restored.count} očitanja. Prethodno stanje spremljeno je kao ${body.restored.safety}.`;
+    await loadSettings(); await load();
+    sform.low.value = fmt(LOW); sform.high.value = fmt(HIGH);
+  } catch (err) {
+    $("local-message").textContent = ""; $("local-error").textContent = err.message;
+  } finally {
+    $("local-restore").disabled = false;
+  }
 });
 
 /* ---------- kopija na Google Drive ---------- */
