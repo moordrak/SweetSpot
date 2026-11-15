@@ -130,9 +130,17 @@ SweetSpot može jednom dnevno spremiti kopiju baze u mapu **SweetSpot** na vaše
 
 Prijava ide kodom, kao na pametnom televizoru, pa radi i kad je SweetSpot dostupan samo u kućnoj mreži.
 
+**Povezivanje:** u web sučelju otvorite **Postavke → Kopija na Google Drive** i kliknite **Poveži Google Drive**.
+Pojavit će se kod: na telefonu ili računalu otvorite `google.com/device`, upišite ga, prijavite se svojim Google
+računom i dopustite pristup. Prva kopija napravi se odmah. Izdanja s GitHuba imaju ugrađen SweetSpot Google klijent,
+pa ništa drugo nije potrebno. Kopije idu izravno s vašeg poslužitelja na vaš Drive; dozvola se čuva samo u vašoj bazi.
+
 ![Kopija na Google Drive u postavkama](docs/screenshots/web-google-drive.png)
 
-### 1. Google klijent (jednom)
+### Vlastiti Google klijent (neobavezno)
+
+Potreban je samo ako SweetSpot gradite sami ili želite vlastiti Google projekt. Upišite ga u postavkama
+(**Vlastiti Google klijent…**) ili u `.env`; vlastiti klijent ima prednost pred ugrađenim.
 
 1. Otvorite [Google Cloud Console](https://console.cloud.google.com/) i napravite projekt, npr. „SweetSpot“.
 2. **APIs & Services → Library**: potražite **Google Drive API** i uključite ga (**Enable**).
@@ -142,15 +150,10 @@ Prijava ide kodom, kao na pametnom televizoru, pa radi i kad je SweetSpot dostup
    poništava prijavu nakon 7 dana i kopije prestaju.
 6. **Clients → Create client**, vrsta **TVs and Limited Input devices**. Zapišite **Client ID** i **Client secret**.
 
-### 2. Povezivanje
+Ako Google upozori da aplikacija nije provjerena, odaberite **Napredno → Idi na SweetSpot**.
 
-U web sučelju otvorite **Postavke → Kopija na Google Drive**, upišite Client ID i Client secret pa kliknite
-**Poveži Google Drive**. Pojavit će se kod: na telefonu ili računalu otvorite `google.com/device`, upišite ga i
-dopustite pristup. Ako Google upozori da aplikacija nije provjerena, odaberite **Napredno → Idi na SweetSpot**
-(to je vaša vlastita aplikacija). Prva kopija napravi se odmah nakon povezivanja.
-
-Client ID i secret mogu se zadati i u datoteci `.env` (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`); tada ih
-sučelje ne traži.
+Za ugrađivanje u vlastita izdanja: tajne repozitorija `GOOGLE_CLIENT_ID` i `GOOGLE_CLIENT_SECRET`
+(Settings → Secrets and variables → Actions).
 
 ### Vraćanje
 

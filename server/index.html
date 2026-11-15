@@ -156,6 +156,8 @@
   .toggle { display: flex; flex-direction: row; align-items: center; gap: 8px; font-size: 14px; color: var(--text-primary); }
   .toggle input { width: 18px; height: 18px; }
   #gd-setup input { width: 100%; }
+  .linkish { background: none; border: 0; padding: 0 0 0 6px; color: var(--series-1); text-decoration: underline;
+             text-underline-offset: 2px; font-size: 13px; cursor: pointer; }
   .gd-box { border: 1px dashed var(--grid); border-radius: 9px; padding: 12px; }
   .gd-code { font: 700 28px/1.2 "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace; letter-spacing: .12em;
              color: var(--series-1); user-select: all; }
@@ -347,8 +349,12 @@
 
         <div id="gd-connect" hidden>
           <button type="button" class="primary" id="gd-connect-btn">Poveži Google Drive</button>
-          <p class="hint" style="margin-top:8px" id="gd-client-info"></p>
         </div>
+        <p class="hint" style="margin:8px 0 0" id="gd-client-line">
+          <span id="gd-client-info"></span>
+          <button type="button" class="linkish" id="gd-own">Vlastiti Google klijent…</button>
+          <button type="button" class="linkish" id="gd-builtin">Koristi ugrađeni</button>
+        </p>
 
         <div id="gd-pending" class="gd-box" hidden>
           <p style="margin:0 0 6px">Na telefonu ili računalu otvorite <a id="gd-url" target="_blank" rel="noopener"></a> i upišite kod:</p>
@@ -789,7 +795,7 @@ function openSettings() {
   showToken(false);
   $("server-url").textContent = location.origin;
   loadToken();
-  $("gd-error").textContent = ""; $("gd-message").textContent = ""; $("gd-list").hidden = true;
+  $("gd-error").textContent = ""; $("gd-message").textContent = ""; $("gd-list").hidden = true; gdOwnForm = false;
   $("local-error").textContent = ""; $("local-message").textContent = "";
   gdRefresh();
   dlg.showModal();
@@ -899,15 +905,18 @@ async function gdCall(method, path, body) {
   return data;
 }
 
+let gdOwnForm = false;
 function gdShow(st) {
   gdState = st;
   const pending = st.pending;
-  $("gd-setup").hidden = st.configured || st.client_from_env;
+  $("gd-setup").hidden = (st.configured && !gdOwnForm) || st.client_from_env;
   $("gd-connect").hidden = !st.configured || st.connected || !!pending;
   $("gd-pending").hidden = !pending || st.connected;
   $("gd-connected").hidden = !st.connected;
-  $("gd-client-info").textContent = st.configured
-    ? `Google klijent: ${st.client_id.split("-")[0]}…${st.client_from_env ? " (iz varijabli okoline)" : ""}` : "";
+  const source = {builtin: "ugrađeni SweetSpot", own: "vlastiti", env: "iz datoteke .env"}[st.client_source];
+  $("gd-client-info").textContent = source ? `Google klijent: ${source}.` : "";
+  $("gd-own").hidden = st.client_from_env || st.client_source === "own" || gdOwnForm || !st.configured;
+  $("gd-builtin").hidden = !(st.client_source === "own" && st.builtin_available);
   if (pending && !st.connected) {
     $("gd-code").textContent = pending.user_code;
     $("gd-url").textContent = pending.verification_url.replace(/^https?:\/\//, "");
@@ -939,7 +948,14 @@ async function gdRefresh() {
   catch (e) { $("gd-error").textContent = e.message; }
 }
 
+$("gd-own").addEventListener("click", () => { gdOwnForm = true; gdShow(gdState); });
+$("gd-builtin").addEventListener("click", async () => {
+  if (gdState.connected && !confirm("Prijeći na ugrađeni Google klijent? Google Drive trebat će povezati ponovno.")) return;
+  try { gdShow(await gdCall("PUT", "/api/backup/config", {client_id: "", client_secret: ""})); } catch (e) { $("gd-error").textContent = e.message; }
+});
 $("gd-save-client").addEventListener("click", async () => {
+  if (gdState && gdState.connected && !confirm("Promijeniti Google klijent? Google Drive trebat će povezati ponovno.")) return;
+  gdOwnForm = false;
   try {
     gdShow(await gdCall("PUT", "/api/backup/config", {client_id: $("gd-client-id").value, client_secret: $("gd-client-secret").value}));
     $("gd-client-secret").value = "";

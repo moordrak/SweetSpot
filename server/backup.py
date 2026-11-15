@@ -95,13 +95,27 @@ class GoogleDriveBackup:
 
     # ------------------------------------------------------------ podaci Google klijenta
 
+    def client_source(self):
+        """Odakle je Google klijent: 'env' (.env), 'own' (upisan u postavkama), 'builtin' (ugrađen u izdanje) ili ''."""
+        if os.environ.get("GOOGLE_CLIENT_ID", "").strip():
+            return "env"
+        if self._get("client_id"):
+            return "own"
+        if os.environ.get("SWEETSPOT_GOOGLE_CLIENT_ID", "").strip():
+            return "builtin"
+        return ""
+
     def client(self):
-        """(client_id, client_secret, iz_okoline). Varijable okoline imaju prednost."""
-        env_id = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
-        env_secret = os.environ.get("GOOGLE_CLIENT_SECRET", "").strip()
-        if env_id:
-            return env_id, env_secret, True
-        return self._get("client_id", ""), self._get("client_secret", ""), False
+        """(client_id, client_secret, iz_okoline). Prednost: .env, zatim vlastiti klijent, zatim ugrađeni."""
+        source = self.client_source()
+        if source == "env":
+            return os.environ["GOOGLE_CLIENT_ID"].strip(), os.environ.get("GOOGLE_CLIENT_SECRET", "").strip(), True
+        if source == "own":
+            return self._get("client_id", ""), self._get("client_secret", ""), False
+        if source == "builtin":
+            return (os.environ["SWEETSPOT_GOOGLE_CLIENT_ID"].strip(),
+                    os.environ.get("SWEETSPOT_GOOGLE_CLIENT_SECRET", "").strip(), False)
+        return "", "", False
 
     def set_client(self, client_id, client_secret):
         client_id, client_secret = str(client_id or "").strip(), str(client_secret or "").strip()
@@ -109,7 +123,11 @@ class GoogleDriveBackup:
             raise ValueError("Client ID mora završavati s .apps.googleusercontent.com")
         if client_id and not client_secret:
             raise ValueError("upišite i Client secret")
+        before = self.client()[0]
         self._set(client_id=client_id or None, client_secret=client_secret or None)
+        if self.client()[0] != before and self._get("refresh_token"):
+            # prijava pripada starom klijentu; s novim se treba povezati ponovno
+            self.disconnect()
 
     # ------------------------------------------------------------ HTTP
 
@@ -455,6 +473,8 @@ class GoogleDriveBackup:
         return {
             "configured": bool(client_id and client_secret),
             "client_from_env": from_env,
+            "client_source": self.client_source(),
+            "builtin_available": bool(os.environ.get("SWEETSPOT_GOOGLE_CLIENT_ID", "").strip()),
             "client_id": client_id,
             "connected": connected,
             "email": self._get("email", ""),
