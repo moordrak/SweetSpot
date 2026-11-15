@@ -129,6 +129,8 @@ SweetSpot može jednom dnevno spremiti kopiju baze u mapu **SweetSpot** na vaše
 
 Prijava ide kodom, kao na pametnom televizoru, pa radi i kad je SweetSpot dostupan samo u kućnoj mreži.
 
+![Kopija na Google Drive u postavkama](docs/screenshots/web-google-drive.png)
+
 ### 1. Google klijent (jednom)
 
 1. Otvorite [Google Cloud Console](https://console.cloud.google.com/) i napravite projekt, npr. „SweetSpot“.
