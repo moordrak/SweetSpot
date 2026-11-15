@@ -2,7 +2,7 @@
 
 <h1 align="center">SweetSpot</h1>
 
-Dnevnik šećera u krvi za vlastiti poslužitelj. Očitanja s Bluetooth aparata **Contour Next**
+Dnevnik mjerenja glukoze u krvi za vlastiti poslužitelj. Očitanja s Bluetooth aparata **Contour Next**
 automatski stižu u web aplikaciju koja radi u Dockeru.
 
 - **`server/`** – web aplikacija: grafikon, prosjeci, popis očitanja, ručni unos, izvoz u CSV, SQLite baza

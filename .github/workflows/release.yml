@@ -92,7 +92,7 @@ jobs:
             ${{ env.IMAGE }}:latest
           labels: |
             org.opencontainers.image.title=SweetSpot
-            org.opencontainers.image.description=Dnevnik šećera za Contour Next
+            org.opencontainers.image.description=Dnevnik mjerenja glukoze u krvi za Contour Next
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.version=${{ steps.v.outputs.version }}
             org.opencontainers.image.revision=${{ github.sha }}

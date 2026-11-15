@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Instalacija web aplikacije SweetSpot (dnevnik šećera).
+# Instalacija web aplikacije SweetSpot (dnevnik mjerenja glukoze u krvi).
 #
 # Na Proxmox hostu (kao root):   bash sweetspot_install.sh
 #   -> stvara novi Debian LXC kontejner, instalira Docker i pokreće SweetSpot.

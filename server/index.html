@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SweetSpot</title>
+<title>SweetSpot – dnevnik mjerenja glukoze u krvi</title>
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgd2lkdGg9IjI1NiIgaGVpZ2h0PSIyNTYiIHJvbGU9ImltZyIgYXJpYS1sYWJlbD0iU3dlZXRTcG90Ij4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0ic3MtYmciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjM2I4YmU2Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzFiNWNiMCIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxjbGlwUGF0aCBpZD0ic3MtZHJvcCI+CiAgICAgIDxwYXRoIGQ9Ik0zMiA3QzMyIDcgMTQgMjcuNSAxNCAzOS41YTE4IDE4IDAgMCAwIDM2IDBDNTAgMjcuNSAzMiA3IDMyIDdaIi8+CiAgICA8L2NsaXBQYXRoPgogIDwvZGVmcz4KICA8cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHJ4PSIxNCIgZmlsbD0idXJsKCNzcy1iZykiLz4KICA8cGF0aCBkPSJNMzIgN0MzMiA3IDE0IDI3LjUgMTQgMzkuNWExOCAxOCAwIDAgMCAzNiAwQzUwIDI3LjUgMzIgNyAzMiA3WiIgZmlsbD0iI2ZmZiIvPgogIDxnIGNsaXAtcGF0aD0idXJsKCNzcy1kcm9wKSI+CiAgICA8cmVjdCB4PSIxMCIgeT0iMzYiIHdpZHRoPSI0NCIgaGVpZ2h0PSI5IiBmaWxsPSIjMmE3OGQ2IiBvcGFjaXR5PSIuMTQiLz4KICAgIDxwYXRoIGQ9Ik0xMSA0NkMxNiA0NiAxOSAzMS41IDI0IDMxLjVTMjguNSA0MC41IDMyIDQwLjUgMzYuNSA0OS41IDQwLjUgNDkuNSA0NyAzOSA1MyAzOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMmE3OGQ2IiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgogIDwvZz4KICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjQwLjUiIHI9IjQuMiIgZmlsbD0iI2ViNjgzNCIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjEuNiIvPgo8L3N2Zz4K">
 <script>
   // Tema se postavlja prije iscrtavanja, da stranica ne bljesne u krivoj boji.
@@ -56,9 +56,9 @@
   main { max-width: 960px; margin: 0 auto; padding: 20px 16px 24px; position: relative; }
   #bg-anim, #bg-art { position: fixed; inset: 0; pointer-events: none; }
   #bg-anim { z-index: -2; width: 100%; height: 100%; opacity: var(--anim-opacity); }
-  #bg-art { z-index: -1; display: flex; align-items: flex-end; justify-content: flex-end; overflow: hidden;
+  #bg-art { z-index: -1; display: flex; align-items: center; justify-content: center; overflow: hidden;
             color: var(--art); opacity: var(--art-opacity); }
-  #bg-art svg { width: min(78vmin, 640px); height: auto; margin: 0 -4vmin -6vmin 0; flex: none; }
+  #bg-art svg { width: min(104vmin, 1100px); height: auto; flex: none; }
   [data-art="off"] #bg-art { display: none; }
 
   .top { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
@@ -76,11 +76,16 @@
   .card { border: 1px solid var(--grid); border-radius: 10px; padding: 16px; margin-top: 16px; }
   .card > header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 6px; }
   .card > header h2 { margin: 0; }
-  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 16px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 12px; margin-top: 16px; }
   .tile { border: 1px solid var(--grid); border-radius: 10px; padding: 12px 14px; }
-  .tile .label { color: var(--text-secondary); font-size: 13px; }
+  .tile .label { color: var(--text-secondary); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tile .value { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
   .tile .unit { font-size: 13px; color: var(--text-secondary); font-weight: 400; }
+  .tile .sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  [data-theme="matrix"] .tile .label { font-size: 12px; }
+  [data-theme="matrix"] .tile .value { font-size: 22px; }
+  [data-theme="matrix"] .tile .unit { font-size: 12px; }
+  .tile.latest { border-color: var(--series-1); box-shadow: inset 3px 0 0 var(--series-1); }
   button, .button { font: inherit; color: var(--text-primary); background: var(--surface-solid);
           border: 1px solid var(--grid); border-radius: 7px; padding: 6px 12px; cursor: pointer; text-decoration: none; }
   button:hover, .button:hover { border-color: var(--text-secondary); }
@@ -185,32 +190,46 @@
     .long { display: none; }
     .short { display: inline; }
     .brand svg { width: 32px; height: 32px; }
+    h1 small { display: block; font-size: 13px; margin-top: 1px; }
   }
 </style>
 </head>
 <body>
 <canvas id="bg-anim" aria-hidden="true"></canvas>
 <div id="bg-art" aria-hidden="true">
-  <!-- Stilizirana pozadinska slika: kap krvi, molekula glukoze i krivulja s ciljnim pojasom -->
-  <svg viewBox="0 0 600 600" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M330 70C330 70 150 270 150 390a180 180 0 0 0 360 0C510 270 330 70 330 70Z" stroke-width="6"/>
-    <path d="M330 120C330 120 190 285 190 390a140 140 0 0 0 280 0C470 285 330 120 330 120Z" stroke-width="2" stroke-dasharray="2 12"/>
-    <rect x="160" y="372" width="340" height="64" rx="4" fill="currentColor" fill-opacity=".18" stroke="none"/>
-    <path d="M150 455C200 455 215 330 265 330S315 405 330 405 380 490 420 490 470 395 510 395" stroke-width="7"/>
-    <circle cx="330" cy="405" r="16" fill="currentColor" stroke="none"/>
-    <circle cx="330" cy="405" r="30" stroke-width="3"/>
-    <g transform="translate(118 150)" stroke-width="5">
-      <path d="M0 -60 52 -30 52 30 0 60 -52 30 -52 -30Z"/>
-      <path d="M52 -30 90 -52M52 30 90 52M0 60 0 104M-52 30 -90 52M-52 -30 -82 -66"/>
-      <circle cx="0" cy="-60" r="13" fill="currentColor" stroke="none"/>
-    </g>
-    <g fill="currentColor" stroke="none" font-family="system-ui, sans-serif" font-weight="700" font-size="26">
-      <text x="212" y="102">OH</text><text x="212" y="216">OH</text><text x="100" y="282">OH</text>
-      <text x="-14" y="216">HO</text><text x="10" y="86">CH₂OH</text>
-    </g>
+  <!-- Stilizirana pozadinska slika: kap krvi s krivuljom i ciljnim pojasom, okružena molekulama glukoze -->
+  <svg viewBox="0 0 1000 1000" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    <defs>
+      <!-- molekula glukoze (prsten s kisikom i OH skupinama) -->
+      <symbol id="glc" viewBox="-150 -120 300 270" overflow="visible">
+        <g stroke-width="5">
+          <path d="M0 -60 52 -30 52 30 0 60 -52 30 -52 -30Z"/>
+          <path d="M52 -30 90 -52M52 30 90 52M0 60 0 104M-52 30 -90 52M-52 -30 -82 -66"/>
+          <circle cx="0" cy="-60" r="13" fill="currentColor" stroke="none"/>
+        </g>
+        <g fill="currentColor" stroke="none" font-family="system-ui, sans-serif" font-weight="700" font-size="26">
+          <text x="94" y="-48">OH</text><text x="94" y="66">OH</text><text x="-18" y="132">OH</text>
+          <text x="-132" y="66">HO</text><text x="-108" y="-64">CH₂OH</text>
+        </g>
+      </symbol>
+    </defs>
+    <path d="M500 130C500 130 235 425 235 615a265 265 0 0 0 530 0C765 425 500 130 500 130Z" stroke-width="8"/>
+    <path d="M500 205C500 205 292 450 292 615a208 208 0 0 0 416 0C708 450 500 205 500 205Z" stroke-width="2.5" stroke-dasharray="2 14"/>
+    <rect x="245" y="590" width="510" height="96" rx="6" fill="currentColor" fill-opacity=".18" stroke="none"/>
+    <path d="M235 712C310 712 332 524 407 524S482 638 500 638 575 770 635 770 712 600 765 600" stroke-width="10"/>
+    <circle cx="500" cy="638" r="22" fill="currentColor" stroke="none"/>
+    <circle cx="500" cy="638" r="42" stroke-width="4"/>
+    <use href="#glc" x="20" y="60" width="300" height="270" transform="rotate(-12 170 195)"/>
+    <use href="#glc" x="705" y="85" width="240" height="216" transform="rotate(16 825 193)"/>
+    <use href="#glc" x="35" y="700" width="230" height="207" transform="rotate(24 150 803)"/>
+    <use href="#glc" x="730" y="700" width="260" height="234" transform="rotate(-20 860 817)"/>
+    <use href="#glc" x="40" y="400" width="150" height="135" transform="rotate(40 115 467)"/>
+    <use href="#glc" x="830" y="430" width="140" height="126" transform="rotate(-34 900 493)"/>
+    <use href="#glc" x="420" y="8" width="160" height="144" transform="rotate(8 500 80)"/>
     <g fill="currentColor" stroke="none">
-      <circle cx="540" cy="120" r="10"/><circle cx="500" cy="190" r="6"/><circle cx="560" cy="250" r="14"/>
-      <circle cx="80" cy="520" r="8"/><circle cx="120" cy="575" r="5"/>
+      <circle cx="350" cy="250" r="10"/><circle cx="660" cy="300" r="7"/><circle cx="700" cy="230" r="13"/>
+      <circle cx="300" cy="940" r="9"/><circle cx="700" cy="955" r="6"/><circle cx="560" cy="935" r="12"/>
+      <circle cx="250" cy="380" r="6"/><circle cx="770" cy="380" r="8"/>
     </g>
   </svg>
 </div>
@@ -219,7 +238,7 @@
   <div class="top">
     <div class="brand">
       <svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="ss-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3b8be6"/><stop offset="1" stop-color="#1b5cb0"/></linearGradient><clipPath id="ss-drop"><path d="M32 7C32 7 14 27.5 14 39.5a18 18 0 0 0 36 0C50 27.5 32 7 32 7Z"/></clipPath></defs><rect width="64" height="64" rx="14" fill="url(#ss-bg)"/><path d="M32 7C32 7 14 27.5 14 39.5a18 18 0 0 0 36 0C50 27.5 32 7 32 7Z" fill="#fff"/><g clip-path="url(#ss-drop)"><rect x="10" y="36" width="44" height="9" fill="#2a78d6" opacity=".14"/><path d="M11 46C16 46 19 31.5 24 31.5S28.5 40.5 32 40.5 36.5 49.5 40.5 49.5 47 39 53 39" fill="none" stroke="#2a78d6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></g><circle cx="32" cy="40.5" r="4.2" fill="#eb6834" stroke="#fff" stroke-width="1.6"/></svg>
-      <h1>SweetSpot <small>dnevnik šećera</small></h1>
+      <h1>SweetSpot <small>dnevnik mjerenja glukoze u krvi</small></h1>
     </div>
     <div class="controls">
       <div class="ranges" role="group" aria-label="Razdoblje">
@@ -579,6 +598,18 @@ function visible() {
   return all.filter(r => r.date >= since);
 }
 
+/** Vrijeme mjerenja u odnosu na sada: "prije 25 min", "danas u 08:30", "jučer u 20:10" ili datum. */
+function since(d) {
+  const minutes = Math.round((Date.now() - d) / 6e4);
+  const day = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const today = day(new Date()), that = day(d);
+  if (minutes >= 0 && minutes < 1) return "upravo";
+  if (minutes >= 0 && minutes < 60) return `prije ${minutes} min`;
+  if (that === today) return `danas u ${fmtTime(d)}`;
+  if (today - that === 864e5) return `jučer u ${fmtTime(d)}`;
+  return `${fmtDate(d)} ${fmtTime(d)}`;
+}
+
 function render() {
   document.querySelectorAll(".ranges button").forEach(b =>
     b.setAttribute("aria-pressed", String(Number(b.dataset.days) === days)));
@@ -586,15 +617,19 @@ function render() {
   const values = rows.map(r => r.mmol);
   const avg = values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
   const inRange = values.filter(v => v >= LOW && v <= HIGH).length;
-  const tile = (label, value, unit = "") =>
-    `<div class="tile"><div class="label">${label}</div><div class="value">${value} <span class="unit">${unit}</span></div></div>`;
-  $("tiles").innerHTML = values.length ? [
+  const tile = (label, value, unit = "", sub = "", cls = "") =>
+    `<div class="tile ${cls}"><div class="label">${label}</div><div class="value">${value} <span class="unit">${unit}</span></div>${[].concat(sub).filter(Boolean).map(x => `<div class="sub">${x}</div>`).join("")}</div>`;
+  // zadnje mjerenje: najnovije od svih očitanja, neovisno o odabranom razdoblju
+  const last = all.reduce((a, r) => !a || r.date > a.date ? r : a, null);
+  const lastTile = last ? tile("Zadnje mjerenje", fmt(last.mmol), "mmol/L",
+    [since(last.date), last.mmol < LOW ? "ispod raspona" : last.mmol > HIGH ? "iznad raspona" : "u rasponu"], "latest") : "";
+  $("tiles").innerHTML = lastTile + (values.length ? [
     tile("Prosjek", fmt(avg), "mmol/L"),
     tile("Najniže", fmt(Math.min(...values)), "mmol/L"),
     tile("Najviše", fmt(Math.max(...values)), "mmol/L"),
-    tile(`U rasponu ${fmt(LOW)}–${fmt(HIGH)}`, Math.round(100 * inRange / values.length), "%"),
+    tile("U rasponu", Math.round(100 * inRange / values.length), "%", `cilj ${fmt(LOW)}–${fmt(HIGH)}`),
     tile("Broj mjerenja", values.length),
-  ].join("") : tile("Broj mjerenja", 0);
+  ].join("") : tile("Broj mjerenja", 0));
 
   $("rows").innerHTML = rows.map(r => `<tr>
       <td>${fmtDate(r.date)}${r.note ? `<div class="note-inline">${esc(r.note)}</div>` : ""}</td>

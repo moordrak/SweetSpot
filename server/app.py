@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""SweetSpot - dnevnik šećera: web aplikacija (API + sučelje). Samo standardna biblioteka."""
+"""SweetSpot - dnevnik mjerenja glukoze u krvi: web aplikacija (API + sučelje). Samo standardna biblioteka."""
 import base64
 import csv
 import hmac
