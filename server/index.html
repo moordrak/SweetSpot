@@ -156,7 +156,7 @@
   #chart { display: block; width: 100%; }
   #chart text { fill: var(--text-secondary); font-size: 12px; font-family: var(--font); font-variant-numeric: tabular-nums; }
   #tip { position: absolute; pointer-events: none; border: 1px solid var(--grid);
-         border-radius: 7px; padding: 6px 9px; font-size: 13px; white-space: nowrap; display: none;
+         border-radius: 7px; padding: 6px 9px; font-size: 13px; white-space: nowrap; display: none; max-width: 260px;
          box-shadow: 0 2px 8px rgba(0,0,0,.15); }
   table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
   th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
@@ -175,6 +175,14 @@
   #note-dlg textarea:focus-visible { outline: 2px solid var(--series-1); outline-offset: 1px; }
   .dlg-foot button { white-space: nowrap; }
   .note-meta { font-size: 14px; margin: 12px 0 10px; }
+  .tip-note { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--grid); white-space: normal;
+              overflow-wrap: anywhere; font-style: italic; }
+  .note-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .note-presets button { border-radius: 999px; padding: 4px 12px; font-size: 13px; }
+  .note-presets button[aria-pressed="true"] { background: var(--series-1); border-color: var(--series-1); color: #fff; font-weight: 600; }
+  [data-theme="matrix"] .note-presets button[aria-pressed="true"],
+  [data-theme="graphite"] .note-presets button[aria-pressed="true"], [data-theme="forest"] .note-presets button[aria-pressed="true"],
+  [data-theme="ocean"] .note-presets button[aria-pressed="true"] { color: #0b0b0b; }
   .note-count { font-size: 12px; color: var(--text-secondary); text-align: right; margin-top: 4px; }
   .muted { color: var(--text-secondary); }
   .scroll { overflow-x: auto; }
@@ -352,6 +360,11 @@
     <div class="dlg-body">
       <p class="note-meta" id="note-meta"></p>
       <label for="note-text" class="muted" style="display:block;margin-bottom:4px">Napomena uz očitanje</label>
+      <div class="note-presets" id="note-presets" role="group" aria-label="Kada je mjerenje napravljeno">
+        <button type="button" data-preset="Na tašte" aria-pressed="false">Na tašte</button>
+        <button type="button" data-preset="Prije obroka" aria-pressed="false">Prije obroka</button>
+        <button type="button" data-preset="Poslije obroka" aria-pressed="false">Poslije obroka</button>
+      </div>
       <textarea id="note-text" maxlength="200" placeholder="npr. nakon večere, prije treninga…"></textarea>
       <div class="note-count" id="note-count"></div>
       <p class="error" id="note-error" role="alert"></p>
@@ -861,7 +874,7 @@ function drawChart() {
     s += `<text x="${x(t)}" y="${H - 8}" text-anchor="${i === 0 ? "start" : i === ticks ? "end" : "middle"}">${text}</text>`;
   }
   points = rows.map(r => ({x: x(+r.date), y: y(r.mmol), r}));
-  s += `<polyline fill="none" stroke="var(--series-1)" stroke-width="2" stroke-linejoin="round"
+  s += `<polyline fill="none" stroke="var(--series-1)" stroke-width="2.5" stroke-linejoin="round"
         points="${points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")}"/>`;
   // točke samo kad ima mjesta (najmanje ~8 px po mjerenju)
   if (points.length <= (W - m.l - m.r) / 8)
@@ -880,7 +893,8 @@ $("chart").addEventListener("pointermove", e => {
   $("dot").setAttribute("cx", p.x); $("dot").setAttribute("cy", p.y);
   $("cross").setAttribute("visibility", "visible"); $("dot").setAttribute("visibility", "visible");
   const tip = $("tip");
-  tip.innerHTML = `<strong>${fmt(p.r.mmol)} mmol/L</strong><br><span class="muted">${fmtDate(p.r.date)} ${fmtTime(p.r.date)}</span>`;
+  tip.innerHTML = `<strong>${fmt(p.r.mmol)} mmol/L</strong><br><span class="muted">${fmtDate(p.r.date)} ${fmtTime(p.r.date)}</span>` +
+    (p.r.note ? `<div class="tip-note">${esc(p.r.note)}</div>` : "");
   tip.style.display = "block";
   const left = p.x / scale, right = left > box.width / 2;
   tip.style.left = right ? "" : left + 12 + "px";
@@ -968,9 +982,36 @@ function openNote(id) {
   $("note-text").focus();
   $("note-text").setSelectionRange(9999, 9999);
 }
+/* Brzi izbor: "Na tašte", "Prije obroka" ili "Poslije obroka" stoji na početku napomene,
+   a ostatak teksta ostaje. Ponovni klik na odabranu opciju je uklanja. */
+const NOTE_PRESETS = ["Na tašte", "Prije obroka", "Poslije obroka"];
+function splitPreset(text) {
+  const t = text.trim();
+  for (const p of NOTE_PRESETS) {
+    if (t.toLowerCase() === p.toLowerCase()) return [p, ""];
+    const m = t.match(new RegExp(`^${p}\\s*[,–—-]\\s*`, "i"));
+    if (m) return [p, t.slice(m[0].length)];
+  }
+  return ["", t];
+}
+function showPresets() {
+  const [preset] = splitPreset($("note-text").value);
+  $("note-presets").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.preset === preset)));
+}
+$("note-presets").addEventListener("click", e => {
+  const b = e.target.closest("button[data-preset]");
+  if (!b) return;
+  const [current, rest] = splitPreset($("note-text").value);
+  const chosen = current === b.dataset.preset ? "" : b.dataset.preset;
+  $("note-text").value = (chosen && rest ? `${chosen}, ${rest}` : chosen || rest).slice(0, 200);
+  countNote();
+  $("note-text").focus();
+});
+
 function countNote() {
   const n = $("note-text").value.length;
   $("note-count").textContent = `${n} / 200`;
+  showPresets();
   $("note-clear").disabled = n === 0;
 }
 async function saveNote(text) {
