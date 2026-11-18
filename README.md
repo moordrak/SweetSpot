@@ -22,9 +22,17 @@ Verzija programa vidi se u podnožju stranice i u postavkama.
 
 ![Web sučelje SweetSpot, svijetla tema s valovima u pozadini](docs/screenshots/web-svijetla.png)
 
-**Teme:** Svijetla, Pijesak, Tamna, Ponoć i Matrix, a zadano se prati tema sustava.
+**Teme:** svijetle Svijetla, Pijesak, Mentol, Lavanda, Nebo i Breskva; tamne Tamna, Ponoć, Grafit, Šuma,
+Šljiva, Ocean i Matrix. Zadano se prati tema sustava.
 
-![Pet tema web sučelja](docs/screenshots/web-teme.png)
+![Svijetle teme](docs/screenshots/web-teme-svijetle.png)
+
+![Tamne teme](docs/screenshots/web-teme-tamne.png)
+
+**Animirane pozadine:** valovi, mjehurići, kiša znakova, zvijezde, polarna svjetlost, molekule glukoze i
+krivulje glukoze.
+
+![Animirane pozadine](docs/screenshots/web-pozadine.png)
 
 ![Tema Matrix s kišom znakova](docs/screenshots/web-matrix.png)
 
@@ -34,9 +42,9 @@ Verzija programa vidi se u podnožju stranice i u postavkama.
 - **token za agente** – prikaz i kopiranje tokena koji se upisuje u Windows i Android agenta
 - **kopija baze** – preuzimanje kopije na računalo (`sweetspot-….db.gz`) i vraćanje baze iz takve datoteke
 - **kopija na Google Drive** – dnevna kopija baze na vaš Google Drive, s popisom kopija i vraćanjem (vidi dolje)
-- **tema** i **animirana pozadina** (valovi, mjehurići, kiša znakova ili bez animacije)
+- **tema** (13 svijetlih i tamnih) i **animirana pozadina** (7 vrsta ili bez animacije)
 - **stilizirana slika u pozadini** – kap, molekula glukoze i krivulja s ciljnim pojasom
-- **prozirnost kartica** – klizač od 0 do 70 %, koliko se pozadina vidi kroz kartice
+- **prozirnost** – prozirnost kartica (0–90 %), zamućenje iza kartica (0–24 px) i jačina pozadine (0–250 %)
 
 Tema, pozadina i prozirnost pamte se na svakom uređaju posebno. Ako je u sustavu uključeno smanjeno kretanje,
 pozadina se ne miče.
